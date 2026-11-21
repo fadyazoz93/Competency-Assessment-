@@ -12,7 +12,7 @@
  */
 
 import { createClient, type Client } from "@libsql/client";
-import { db, resetDb, getConfiguredDbHost } from "./lib/db.js";
+import { db, resetDb, getConfiguredDbHost, getLastTursoHttpDetail } from "./lib/db.js";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -2933,14 +2933,22 @@ export default async function handler(req: any, res: any) {
     const rawErrMsg = String(error?.message || error || "");
     let friendlyError = rawErrMsg;
 
+    const tursoDetail = getLastTursoHttpDetail();
+    const detailSuffix = tursoDetail?.detail ? ` — رد الخادم: (${tursoDetail.detail})` : "";
+
     if (/HTTP status 404/i.test(rawErrMsg)) {
       resetDb();
       const dbHost = getConfiguredDbHost();
-      friendlyError = `فشل الاتصال بقاعدة بيانات Turso (خطأ 404 على النطاق: ${dbHost}). يرجى التحقق في إعدادات Vercel من متغير TURSO_DATABASE_URL والتأكد من أن قاعدة البيانات موجودة ونشطة (غير محذوفة أو مؤرشفة) وبصيغة libsql://your-db-org.turso.io`;
+      const isArchived = /archiv/i.test(tursoDetail?.detail || "");
+      friendlyError = isArchived
+        ? `قاعدة بيانات Turso على النطاق (${dbHost}) مؤرشفة حالياً بسبب عدم النشاط. يرجى فتح لوحة تحكم Turso والضغط على Unarchive لإعادة تنشيطها${detailSuffix}`
+        : `فشل الاتصال بقاعدة بيانات Turso (خطأ 404 على النطاق: ${dbHost})${detailSuffix}. يرجى التأكد في لوحة تحكم Turso من أن قاعدة البيانات نشطة (غير محذوفة أو مؤرشفة)، وإنشاء Token جديد ثم تحديث TURSO_DATABASE_URL و TURSO_AUTH_TOKEN في Vercel وعمل Redeploy.`;
     } else if (/HTTP status (401|403)/i.test(rawErrMsg) || /unauthorized/i.test(rawErrMsg)) {
       resetDb();
-      friendlyError =
-        "فشل المصادقة مع قاعدة بيانات Turso (خطأ 401/403). يرجى التحقق من متغير TURSO_AUTH_TOKEN في إعدادات Vercel أو إنشاء Token جديد من لوحة Turso.";
+      friendlyError = `فشل المصادقة مع قاعدة بيانات Turso (خطأ 401/403)${detailSuffix}. يرجى التحقق من متغير TURSO_AUTH_TOKEN في إعدادات Vercel أو إنشاء Token جديد من لوحة Turso وعمل Redeploy.`;
+    } else if (/HTTP status 400/i.test(rawErrMsg)) {
+      resetDb();
+      friendlyError = `رفض خادم Turso الطلب (خطأ 400)${detailSuffix}. يرجى التأكد من نسخ TURSO_AUTH_TOKEN بشكل كامل وصحيح في إعدادات Vercel بدون مسافات أو سطور ناقصة.`;
     }
 
     if (res.writeHead) {

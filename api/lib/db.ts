@@ -63,6 +63,44 @@ export function getConfiguredDbHost(): string {
   }
 }
 
+let lastTursoHttpDetail: { status: number; detail: string } | null = null;
+
+export function getLastTursoHttpDetail(): { status: number; detail: string } | null {
+  return lastTursoHttpDetail;
+}
+
+const diagnosticFetch: typeof fetch = async (input, init) => {
+  const resp = await globalThis.fetch(input, init);
+  if (resp.ok) {
+    lastTursoHttpDetail = null;
+  } else {
+    try {
+      const cloned = resp.clone();
+      const rawText = (await cloned.text()).trim();
+      let detail = rawText;
+      if (rawText.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(rawText);
+          if (typeof parsed?.error === "string" && parsed.error.trim()) {
+            detail = parsed.error.trim();
+          } else if (typeof parsed?.message === "string" && parsed.message.trim()) {
+            detail = parsed.message.trim();
+          }
+        } catch {
+          // keep rawText
+        }
+      }
+      lastTursoHttpDetail = {
+        status: resp.status,
+        detail: detail.slice(0, 260),
+      };
+    } catch {
+      lastTursoHttpDetail = { status: resp.status, detail: "" };
+    }
+  }
+  return resp;
+};
+
 function getClient(): Client {
   const url = normalizeDatabaseUrl(process.env.TURSO_DATABASE_URL);
   const authToken = normalizeAuthToken(process.env.TURSO_AUTH_TOKEN);
@@ -71,7 +109,7 @@ function getClient(): Client {
     return createClient({ url });
   }
 
-  return createClient({ url, authToken });
+  return createClient({ url, authToken, fetch: diagnosticFetch });
 }
 
 let clientInstance: Client | null = null;
