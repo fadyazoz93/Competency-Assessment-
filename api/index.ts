@@ -12,7 +12,7 @@
  */
 
 import { createClient, type Client } from "@libsql/client";
-import { db, resetDb } from "./lib/db.js";
+import { db, resetDb, getConfiguredDbHost } from "./lib/db.js";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -2930,12 +2930,25 @@ export default async function handler(req: any, res: any) {
     }
   } catch (error: any) {
     console.error("API handler error:", error);
+    const rawErrMsg = String(error?.message || error || "");
+    let friendlyError = rawErrMsg;
+
+    if (/HTTP status 404/i.test(rawErrMsg)) {
+      resetDb();
+      const dbHost = getConfiguredDbHost();
+      friendlyError = `فشل الاتصال بقاعدة بيانات Turso (خطأ 404 على النطاق: ${dbHost}). يرجى التحقق في إعدادات Vercel من متغير TURSO_DATABASE_URL والتأكد من أن قاعدة البيانات موجودة ونشطة (غير محذوفة أو مؤرشفة) وبصيغة libsql://your-db-org.turso.io`;
+    } else if (/HTTP status (401|403)/i.test(rawErrMsg) || /unauthorized/i.test(rawErrMsg)) {
+      resetDb();
+      friendlyError =
+        "فشل المصادقة مع قاعدة بيانات Turso (خطأ 401/403). يرجى التحقق من متغير TURSO_AUTH_TOKEN في إعدادات Vercel أو إنشاء Token جديد من لوحة Turso.";
+    }
+
     if (res.writeHead) {
       res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ success: false, error: error.message || error.toString() }));
+      res.end(JSON.stringify({ success: false, error: friendlyError }));
     } else {
-      res.status?.(500).json?.({ success: false, error: error.message }) ||
-        res.send?.({ success: false, error: error.toString() });
+      res.status?.(500).json?.({ success: false, error: friendlyError }) ||
+        res.send?.({ success: false, error: friendlyError });
     }
   }
 }
