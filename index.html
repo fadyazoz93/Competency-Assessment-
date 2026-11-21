@@ -15,91 +15,497 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
     :root {
-      --bg-canvas: #F8FAFC;
-      --bg-surface: #FFFFFF;
-      --border-subtle: #E2E8F0;
+      --bg-canvas: #EEF4FA;
+      --bg-surface: rgba(255, 255, 255, 0.86);
+      --bg-surface-solid: #FFFFFF;
+      --border-subtle: rgba(148, 163, 184, 0.28);
+      --border-glow: rgba(20, 184, 166, 0.45);
       --color-primary: #0D9488;
+      --color-primary-bright: #14B8A6;
       --color-primary-hover: #0F766E;
       --color-secondary: #0284C7;
+      --color-cyan: #06B6D4;
+      --color-obsidian: #0B1221;
       --color-success-bg: #DCFCE7;
       --color-success-text: #10B981;
       --color-warning-bg: #FEF3C7;
       --color-warning-text: #F59E0B;
       --color-danger-bg: #FEE2E2;
       --color-danger-text: #EF4444;
+      --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     body {
-      font-family: 'IBM Plex Sans Arabic', sans-serif;
+      font-family: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', sans-serif;
       background-color: var(--bg-canvas);
+      background-image:
+        radial-gradient(circle at 12% 10%, rgba(13, 148, 136, 0.09) 0%, transparent 42%),
+        radial-gradient(circle at 88% 14%, rgba(2, 132, 199, 0.09) 0%, transparent 44%),
+        radial-gradient(circle at 50% 95%, rgba(6, 182, 212, 0.06) 0%, transparent 45%),
+        radial-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px;
+      background-attachment: fixed;
       color: #0F172A;
+      -webkit-font-smoothing: antialiased;
     }
 
     .tabular-nums, .num-metric {
-      font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif;
+      font-family: 'JetBrains Mono', 'IBM Plex Sans Arabic', monospace;
       font-variant-numeric: tabular-nums;
     }
 
-    /* Bento Card & Surface System (Screen) */
+    /* Futuristic Atmospheric Center Portal Canvas */
+    #center-login-page {
+      background-color: var(--bg-canvas);
+      background-image:
+        radial-gradient(circle at 16% 18%, rgba(20, 184, 166, 0.13) 0%, transparent 42%),
+        radial-gradient(circle at 84% 22%, rgba(2, 132, 199, 0.12) 0%, transparent 42%),
+        radial-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 26px 26px;
+    }
+
+    /* Futuristic Bio-Glass Bento Surface with Cursor-Tracking Spotlight */
     .bento-card {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-      transition: box-shadow 250ms ease-out, border-color 250ms ease-out;
+      position: relative;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 252, 255, 0.86) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 20px;
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 4px 20px -4px rgba(15, 23, 42, 0.06),
+        0 1px 3px rgba(15, 23, 42, 0.04);
+      transition: transform 240ms var(--ease-spring), box-shadow 260ms var(--ease-spring), border-color 240ms ease-out;
+    }
+    .bento-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: radial-gradient(
+        420px circle at var(--mx, 50%) var(--my, 0%),
+        rgba(20, 184, 166, 0.085),
+        rgba(2, 132, 199, 0.04) 40%,
+        transparent 72%
+      );
+      opacity: 0;
+      transition: opacity 280ms ease-out;
+      z-index: 0;
+    }
+    .bento-card:hover::before {
+      opacity: 1;
+    }
+    .bento-card > * {
+      position: relative;
+      z-index: 1;
     }
     .bento-card:hover {
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+      border-color: rgba(20, 184, 166, 0.38);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.95) inset,
+        0 14px 32px -12px rgba(13, 148, 136, 0.14),
+        0 4px 12px -2px rgba(15, 23, 42, 0.06);
     }
 
-    .clinical-header {
-      background: rgba(255, 255, 255, 0.88);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid #E2E8F0;
+    /* Interactive Center Cards get gentle 3D lift + stagger entrance */
+    .center-portal-card {
+      animation: cardStaggerIn 420ms var(--ease-spring) backwards;
+    }
+    .center-portal-card:hover {
+      transform: translateY(-4px);
+    }
+    @keyframes cardStaggerIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    /* Futuristic Dark Obsidian Frosted Command Header & Portal Banner */
+    .clinical-header,
+    .futuristic-banner {
+      background: linear-gradient(135deg, rgba(11, 18, 33, 0.94) 0%, rgba(15, 28, 46, 0.92) 55%, rgba(13, 43, 54, 0.92) 100%);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(45, 212, 191, 0.22);
+      box-shadow: 0 8px 30px -10px rgba(2, 6, 23, 0.42);
+      position: relative;
+    }
+    .clinical-header::after,
+    .futuristic-banner::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent 0%, rgba(45, 212, 191, 0.7) 28%, rgba(56, 189, 248, 0.75) 55%, rgba(45, 212, 191, 0.6) 78%, transparent 100%);
+      pointer-events: none;
+    }
+
+    /* Luminous Framed Logo Glass Plates */
+    .fx-logo-plate {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow: 0 4px 14px rgba(2, 6, 23, 0.25), 0 0 0 1px rgba(45, 212, 191, 0.2);
+      transition: transform 240ms var(--ease-spring), box-shadow 240ms var(--ease-spring);
+    }
+    .fx-logo-plate:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 8px 20px rgba(20, 184, 166, 0.28), 0 0 0 1.5px rgba(45, 212, 191, 0.55);
+    }
+    .fx-brand-orb {
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(56, 189, 248, 0.22));
+      border: 1px solid rgba(45, 212, 191, 0.45);
+      box-shadow: 0 0 18px rgba(20, 184, 166, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: transform 300ms var(--ease-bounce), box-shadow 280ms ease-out;
+    }
+    .fx-brand-orb:hover {
+      transform: scale(1.08) rotate(-4deg);
+      box-shadow: 0 0 26px rgba(45, 212, 191, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    /* Futuristic Search Inputs */
     .pill-search {
       background-color: #F1F5F9;
-      border: 1px solid transparent;
+      border: 1px solid rgba(148, 163, 184, 0.35);
       border-radius: 9999px;
-      transition: background-color 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out;
+      transition: background-color 200ms ease-out, border-color 200ms ease-out, box-shadow 220ms var(--ease-spring), transform 200ms var(--ease-spring);
     }
     .pill-search:focus {
       background-color: #FFFFFF;
       border-color: #0D9488;
-      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+      box-shadow: 0 0 0 3.5px rgba(20, 184, 166, 0.16), 0 6px 16px -6px rgba(13, 148, 136, 0.2);
       outline: none;
     }
+    .clinical-header .pill-search {
+      background-color: rgba(255, 255, 255, 0.08);
+      border-color: rgba(148, 163, 184, 0.28);
+      color: #F8FAFC;
+    }
+    .clinical-header .pill-search::placeholder {
+      color: rgba(203, 213, 225, 0.72);
+    }
+    .clinical-header .pill-search:focus {
+      background-color: rgba(15, 23, 42, 0.85);
+      border-color: #2DD4BF;
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.24), 0 0 18px rgba(45, 212, 191, 0.18);
+      color: #FFFFFF;
+    }
 
-    /* 1. Navigation & Action Icon Lift Micro-Interaction */
+    /* 1. Futuristic Navigation Tabs with Kinetic Active Glow & Icon Lift */
     .nav-btn {
-      color: #475569;
-      transition: color 220ms ease-out, background-color 220ms ease-out;
+      position: relative;
+      color: #CBD5E1;
+      border: 1px solid transparent;
+      transition: color 200ms ease-out, background-color 220ms ease-out, border-color 220ms ease-out, transform 200ms var(--ease-spring), box-shadow 240ms ease-out;
+    }
+    .nav-btn::after {
+      content: '';
+      position: absolute;
+      left: 20%;
+      right: 20%;
+      bottom: 3px;
+      height: 2px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, #2DD4BF, #38BDF8);
+      transform: scaleX(0);
+      opacity: 0;
+      transition: transform 260ms var(--ease-spring), opacity 220ms ease-out;
     }
     .nav-btn .nav-icon,
     .action-icon-btn .action-icon {
-      transition: transform 220ms ease-out, color 220ms ease-out;
+      transition: transform 260ms var(--ease-bounce), color 200ms ease-out, filter 220ms ease-out;
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
-    .nav-btn:hover,
+    .nav-btn:hover {
+      color: #FFFFFF;
+      background-color: rgba(255, 255, 255, 0.08);
+      border-color: rgba(148, 163, 184, 0.22);
+      transform: translateY(-1px);
+    }
     .nav-btn.active-nav {
-      color: #0D9488;
-      background-color: rgba(13, 148, 136, 0.08);
+      color: #FFFFFF;
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.26) 0%, rgba(14, 165, 233, 0.22) 100%);
+      border-color: rgba(45, 212, 191, 0.45);
+      box-shadow: 0 0 20px rgba(20, 184, 166, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+    .nav-btn.active-nav::after {
+      transform: scaleX(1);
+      opacity: 1;
     }
     .nav-btn:hover .nav-icon,
-    .nav-btn.active-nav .nav-icon,
+    .nav-btn.active-nav .nav-icon {
+      transform: translateY(-2px) scale(1.14);
+      color: #5EEAD4;
+      filter: drop-shadow(0 0 6px rgba(45, 212, 191, 0.55));
+    }
     .action-icon-btn:hover .action-icon {
-      transform: translateY(-2px);
+      transform: translateY(-2px) scale(1.12);
       color: #0D9488;
     }
 
-    /* 2. Checklist & Status Completion Morph + SVG Stroke Draw */
+    /* 2. Global Interactive Buttons — Tactile Lift, Spring Press, Optical Shimmer & Click Ripple */
+    button:not(:disabled) {
+      position: relative;
+      overflow: hidden;
+      transition:
+        transform 180ms var(--ease-spring),
+        box-shadow 220ms var(--ease-spring),
+        background-color 200ms ease-out,
+        border-color 200ms ease-out,
+        color 180ms ease-out,
+        filter 200ms ease-out;
+      will-change: transform;
+    }
+    button:not(:disabled):hover {
+      transform: translateY(-1.5px);
+    }
+    button:not(:disabled):active {
+      transform: translateY(0px) scale(0.97);
+    }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid #14B8A6;
+      outline-offset: 2px;
+    }
+
+    /* Optical Light-Sheen Sweep on Primary / Accent Buttons */
+    button[class*="bg-[#0D9488]"],
+    button[class*="bg-[#0284C7]"],
+    button[class*="bg-slate-900"],
+    button[class*="bg-slate-800"],
+    button[class*="bg-[#EF4444]"],
+    .fx-btn-primary {
+      box-shadow: 0 4px 14px -4px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+    button[class*="bg-[#0D9488]"]:hover {
+      box-shadow: 0 10px 24px -6px rgba(13, 148, 136, 0.52), 0 0 0 1px rgba(45, 212, 191, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    button[class*="bg-[#0284C7]"]:hover {
+      box-shadow: 0 10px 24px -6px rgba(2, 132, 199, 0.5), 0 0 0 1px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    button[class*="bg-slate-900"]:hover,
+    button[class*="bg-slate-800"]:hover {
+      box-shadow: 0 10px 24px -6px rgba(15, 23, 42, 0.48), 0 0 0 1px rgba(148, 163, 184, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    button[class*="bg-[#EF4444]"]:hover {
+      box-shadow: 0 10px 22px -6px rgba(239, 68, 68, 0.48), 0 0 0 1px rgba(248, 113, 113, 0.45);
+    }
+    button[class*="bg-[#0D9488]"]::before,
+    button[class*="bg-[#0284C7]"]::before,
+    button[class*="bg-slate-900"]::before,
+    .fx-btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -60%;
+      width: 45%;
+      background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.32) 50%, transparent 100%);
+      transform: skewX(-22deg) translateX(0);
+      pointer-events: none;
+      opacity: 0;
+      transition: transform 560ms var(--ease-spring), opacity 200ms ease-out;
+    }
+    button[class*="bg-[#0D9488]"]:hover::before,
+    button[class*="bg-[#0284C7]"]:hover::before,
+    button[class*="bg-slate-900"]:hover::before,
+    .fx-btn-primary:hover::before {
+      opacity: 1;
+      transform: skewX(-22deg) translateX(360%);
+    }
+
+    /* Pointer Ripple Wave Element */
+    .fx-ripple-wave {
+      position: absolute;
+      border-radius: 9999px;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(45, 212, 191, 0.25) 60%, transparent 100%);
+      transform: scale(0);
+      opacity: 0.85;
+      animation: fxRippleExpand 460ms var(--ease-spring) forwards;
+      z-index: 2;
+    }
+    @keyframes fxRippleExpand {
+      to {
+        transform: scale(2.8);
+        opacity: 0;
+      }
+    }
+
+    /* 3. Context-Aware Kinetic Icon System (Every Icon Reacts Semantically) */
+    button i.fas,
+    button i.far,
+    .fx-icon-orb i {
+      display: inline-block;
+      transition: transform 280ms var(--ease-bounce), filter 220ms ease-out, color 200ms ease-out;
+    }
+    /* Spin icons: sync, sliders, cog */
+    button:hover i.fa-sync-alt,
+    button:hover i.fa-sync,
+    button:hover i.fa-cog {
+      transform: rotate(180deg) scale(1.12);
+    }
+    button:hover i.fa-sliders-h {
+      transform: rotate(90deg) scale(1.12);
+    }
+    /* Flip swap icon */
+    button:hover i.fa-exchange-alt {
+      transform: rotate(180deg) scale(1.14);
+    }
+    /* Spring rotate plus icons */
+    button:hover i.fa-plus,
+    button:hover i.fa-plus-circle {
+      transform: rotate(90deg) scale(1.18);
+    }
+    /* Directional RTL glide */
+    button:hover i.fa-sign-in-alt,
+    button:hover i.fa-arrow-left {
+      transform: translateX(-4px) scale(1.1);
+    }
+    button:hover i.fa-arrow-right {
+      transform: translateX(4px) scale(1.1);
+    }
+    /* Save / download / import docking dip */
+    button:hover i.fa-save,
+    button:hover i.fa-cloud-download-alt,
+    button:hover i.fa-file-import {
+      transform: translateY(2px) scale(1.14);
+    }
+    /* Print / file / excel paper lift */
+    button:hover i.fa-print,
+    button:hover i.fa-file-alt,
+    button:hover i.fa-file-excel,
+    button:hover i.fa-table {
+      transform: translateY(-2.5px) scale(1.14) rotate(-3deg);
+    }
+    /* Edit / pen precision tilt */
+    button:hover i.fa-edit,
+    button:hover i.fa-pen {
+      transform: rotate(-14deg) scale(1.16);
+    }
+    /* Copy pop shift */
+    button:hover i.fa-copy,
+    button:hover i.fa-layer-group {
+      transform: translate(-1.5px, -2px) scale(1.16);
+    }
+    /* Delete trash tactile shake */
+    button:hover i.fa-trash-alt,
+    button:hover i.fa-trash {
+      animation: iconShakeWarn 380ms ease-in-out;
+    }
+    @keyframes iconShakeWarn {
+      0%, 100% { transform: rotate(0deg) scale(1.12); }
+      25% { transform: rotate(-14deg) scale(1.16); }
+      55% { transform: rotate(12deg) scale(1.16); }
+      80% { transform: rotate(-7deg) scale(1.14); }
+    }
+    /* Search lens zoom */
+    button:hover i.fa-search {
+      transform: scale(1.2) rotate(-12deg);
+    }
+    /* Eye aperture pop */
+    button:hover i.fa-eye,
+    button:hover i.fa-eye-slash {
+      transform: scale(1.2);
+    }
+    /* Magic / star / check pop */
+    button:hover i.fa-magic,
+    button:hover i.fa-star,
+    button:hover i.fa-check,
+    button:hover i.fa-check-circle {
+      transform: scale(1.2) rotate(-10deg);
+    }
+    /* Database / Hospital / Nurse / Clipboard hover levitation */
+    button:hover i.fa-database,
+    button:hover i.fa-hospital,
+    button:hover i.fa-hospital-alt,
+    button:hover i.fa-user-nurse,
+    button:hover i.fa-clipboard-check,
+    button:hover i.fa-bars {
+      transform: translateY(-2px) scale(1.14);
+    }
+    /* Undo / eraser */
+    button:hover i.fa-undo {
+      transform: rotate(-45deg) scale(1.14);
+    }
+    button:hover i.fa-eraser {
+      transform: translateX(-2px) rotate(-12deg) scale(1.14);
+    }
+
+    /* Futuristic Section & Card Icon Orbs */
+    .bento-card:hover .fx-icon-orb,
+    .fx-icon-orb:hover {
+      transform: scale(1.08) translateY(-1px);
+      box-shadow: 0 8px 20px -6px rgba(13, 148, 136, 0.35), 0 0 0 1px rgba(20, 184, 166, 0.35);
+    }
+    .fx-icon-orb {
+      transition: transform 280ms var(--ease-bounce), box-shadow 260ms ease-out;
+    }
+
+    /* Interactive Table Row Illumination */
+    table tbody tr {
+      transition: background-color 180ms ease-out, box-shadow 180ms ease-out;
+    }
+    #individuals table tbody tr:hover,
+    #settings table tbody tr:hover {
+      background-color: rgba(20, 184, 166, 0.055);
+    }
+
+    /* Page & Modal Spatial Entrance Animations */
+    .page-reveal {
+      animation: pageReveal 280ms var(--ease-spring);
+    }
+    @keyframes pageReveal {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fixed.inset-0:not(.hidden) > .bento-card,
+    .fixed.inset-0:not(.hidden) > div.rounded-2xl {
+      animation: modalSpringIn 260ms var(--ease-spring);
+    }
+    @keyframes modalSpringIn {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Futuristic Toast Notification Entrance + Optical Progress Bar */
+    .fx-toast-item {
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      animation: toastSlideIn 300ms var(--ease-spring);
+    }
+    .fx-toast-progress {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      height: 2.5px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.55);
+      transform-origin: right center;
+      animation: toastCountdown 3800ms linear forwards;
+    }
+    @keyframes toastSlideIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toastCountdown {
+      from { transform: scaleX(1); }
+      to { transform: scaleX(0); }
+    }
+
+    /* 4. Checklist & Status Completion Morph + Kinetic Score Radio Pills */
     .audit-check-badge {
       width: 28px;
       height: 28px;
@@ -111,14 +517,14 @@
       border: 2px solid #CBD5E1;
       background-color: #FFFFFF;
       color: transparent;
-      transition: background-color 250ms ease-out, border-color 250ms ease-out, box-shadow 250ms ease-out;
+      transition: background-color 250ms ease-out, border-color 250ms ease-out, box-shadow 250ms ease-out, transform 240ms var(--ease-bounce);
     }
     .audit-check-badge.is-yes {
       background-color: #10B981;
       border-color: #10B981;
       color: #FFFFFF;
       box-shadow: 0 0 0 4px #DCFCE7;
-      animation: checkSpringBounce 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: checkSpringBounce 320ms var(--ease-bounce);
     }
     .audit-check-badge.is-yes .check-svg-path {
       stroke-dasharray: 24;
@@ -142,57 +548,69 @@
       background-color: #10B981;
       border-color: #10B981;
       color: #FFFFFF;
-      box-shadow: 0 0 0 4px #DCFCE7;
-      animation: checkSpringBounce 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 0 0 4px #DCFCE7, 0 0 14px rgba(16, 185, 129, 0.35);
+      animation: checkSpringBounce 300ms var(--ease-bounce);
     }
     .audit-check-badge.is-score-2 {
       background-color: #0284C7;
       border-color: #0284C7;
       color: #FFFFFF;
-      box-shadow: 0 0 0 4px #E0F2FE;
-      animation: checkSpringBounce 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 0 0 4px #E0F2FE, 0 0 14px rgba(2, 132, 199, 0.32);
+      animation: checkSpringBounce 300ms var(--ease-bounce);
     }
     .audit-check-badge.is-score-1 {
       background-color: #F59E0B;
       border-color: #F59E0B;
       color: #FFFFFF;
-      box-shadow: 0 0 0 4px #FEF3C7;
+      box-shadow: 0 0 0 4px #FEF3C7, 0 0 14px rgba(245, 158, 11, 0.3);
       animation: checkSpringBounce 280ms ease-out;
     }
     .audit-check-badge.is-score-0 {
       background-color: #EF4444;
       border-color: #EF4444;
       color: #FFFFFF;
-      box-shadow: 0 0 0 4px #FEE2E2;
+      box-shadow: 0 0 0 4px #FEE2E2, 0 0 14px rgba(239, 68, 68, 0.3);
       animation: checkSpringBounce 280ms ease-out;
+    }
+    .score-radio-pill span {
+      transition: transform 200ms var(--ease-bounce), box-shadow 220ms ease-out, background-color 180ms ease-out, border-color 180ms ease-out;
+    }
+    .score-radio-pill:hover span {
+      transform: translateY(-2px) scale(1.04);
+    }
+    .score-radio-pill:active span {
+      transform: scale(0.95);
+    }
+    .score-radio-pill input:checked + span {
+      transform: scale(1.05);
     }
     .score-radio-pill input:checked + span.score-pill-0 {
       background-color: #EF4444;
       border-color: #EF4444;
       color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.28);
+      box-shadow: 0 6px 16px -4px rgba(239, 68, 68, 0.55);
     }
     .score-radio-pill input:checked + span.score-pill-1 {
       background-color: #F59E0B;
       border-color: #F59E0B;
       color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.28);
+      box-shadow: 0 6px 16px -4px rgba(245, 158, 11, 0.55);
     }
     .score-radio-pill input:checked + span.score-pill-2 {
       background-color: #0284C7;
       border-color: #0284C7;
       color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.28);
+      box-shadow: 0 6px 16px -4px rgba(2, 132, 199, 0.55);
     }
     .score-radio-pill input:checked + span.score-pill-3 {
       background-color: #10B981;
       border-color: #10B981;
       color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28);
+      box-shadow: 0 6px 16px -4px rgba(16, 185, 129, 0.55);
     }
     @keyframes checkSpringBounce {
       0% { transform: scale(0.82); }
-      55% { transform: scale(1.12); }
+      55% { transform: scale(1.14); }
       100% { transform: scale(1); }
     }
     @keyframes drawCheckStroke {
@@ -200,7 +618,7 @@
       100% { stroke-dashoffset: 0; }
     }
 
-    /* 3. Notification & Alert Bell Concentric Pulse Ring */
+    /* 5. Notification & Alert Bell Concentric Pulse Ring */
     .alert-bell-btn {
       position: relative;
     }
@@ -227,7 +645,7 @@
       75%, 100% { transform: scale(2.1); opacity: 0; }
     }
 
-    /* 4. Data & Sparkline Stroke Draw (600ms) */
+    /* 6. Data & Sparkline Stroke Draw */
     .sparkline-path {
       stroke-dasharray: 420;
       stroke-dashoffset: 420;
@@ -244,14 +662,36 @@
       to { opacity: 1; }
     }
 
-    /* 5. Medical ECG / Shield Loading State */
+    /* 7. Futuristic Holographic ECG / Shield Loader */
     .ecg-loader-line {
       stroke-dasharray: 140;
       stroke-dashoffset: 140;
       animation: ecgHeartbeatDraw 1.35s ease-in-out infinite;
     }
     .medical-shield-pulse {
-      animation: shieldSoftPulse 1.35s ease-in-out infinite;
+      animation: shieldSoftPulse 1.6s ease-in-out infinite;
+    }
+    .fx-loader-orbit {
+      position: absolute;
+      inset: -8px;
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      border-top-color: #14B8A6;
+      border-right-color: rgba(56, 189, 248, 0.65);
+      animation: fxOrbitSpin 1.4s linear infinite;
+    }
+    .fx-loader-orbit-reverse {
+      position: absolute;
+      inset: -16px;
+      border-radius: 9999px;
+      border: 1.5px dashed rgba(20, 184, 166, 0.35);
+      animation: fxOrbitSpinReverse 4.5s linear infinite;
+    }
+    @keyframes fxOrbitSpin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes fxOrbitSpinReverse {
+      to { transform: rotate(-360deg); }
     }
     @keyframes ecgHeartbeatDraw {
       0% { stroke-dashoffset: 140; opacity: 0.4; }
@@ -260,8 +700,27 @@
       100% { stroke-dashoffset: -140; opacity: 0.2; }
     }
     @keyframes shieldSoftPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.04); }
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.25)); }
+      50% { transform: scale(1.05); filter: drop-shadow(0 0 18px rgba(20, 184, 166, 0.48)); }
+    }
+
+    /* Live Progress Bar Optical Flow */
+    #entry-live-bar {
+      background: linear-gradient(90deg, #0D9488, #14B8A6, #06B6D4);
+      box-shadow: 0 0 10px rgba(20, 184, 166, 0.45);
+    }
+
+    /* Respect Reduced Motion Accessibility Preference */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      button:hover,
+      .center-portal-card:hover {
+        transform: none !important;
+      }
     }
 
     /* Print Tweaks - Strictly Preserved & Isolated */
@@ -271,12 +730,17 @@
         margin: 5mm 6mm 5mm 6mm; /* Dynamic margin that adapts cleanly to both A4 and Letter paper */
       }
       
-      .no-print { display: none !important; }
+      .no-print, .fx-ripple-wave { display: none !important; }
 
       *, *::before, *::after {
         animation: none !important;
         transition: none !important;
         transform: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+      .bento-card::before {
+        display: none !important;
       }
 
       .bento-card {
@@ -464,34 +928,34 @@
 </head>
 <body class="bg-[#F8FAFC] text-slate-900 h-screen flex flex-col overflow-hidden">
 
-  <!-- Clinical Sticky Frosted Header -->
+  <!-- Futuristic Obsidian Frosted Command Header -->
   <header class="clinical-header sticky top-0 z-30 no-print flex-shrink-0">
     <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center gap-3">
       <!-- Brand Identity + Right Logo (RTL start = Right) -->
       <div class="flex items-center gap-3 min-w-0">
-        <div id="header-logo-right-wrap" class="hidden h-11 max-w-[110px] rounded-xl bg-white border border-[#E2E8F0] px-1.5 py-1 flex items-center justify-center flex-shrink-0 shadow-2xs">
+        <div id="header-logo-right-wrap" class="hidden fx-logo-plate h-11 max-w-[110px] rounded-xl px-1.5 py-1 flex items-center justify-center flex-shrink-0">
           <img id="header-logo-right" alt="الشعار الأيمن للمركز" class="max-h-9 max-w-[96px] w-auto object-contain">
         </div>
-        <div id="header-default-logo" class="w-10 h-10 rounded-2xl bg-[#0D9488]/10 border border-[#0D9488]/20 flex items-center justify-center flex-shrink-0 p-1">
+        <div id="header-default-logo" class="fx-brand-orb w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 p-1">
           <img src="/favicon.svg" alt="شعار النظام" class="w-8 h-8 object-contain">
         </div>
         <div class="min-w-0">
-          <h1 id="brand-name" class="font-bold text-base md:text-lg text-slate-900 leading-tight truncate">Competency Assessment - تقييمات الكفاءة</h1>
-          <p class="text-[11px] text-slate-500 font-medium truncate">Competency Assessment - تقييمات الكفاءة</p>
+          <h1 id="brand-name" class="font-bold text-base md:text-lg text-white leading-tight truncate tracking-tight">Competency Assessment - تقييمات الكفاءة</h1>
+          <p class="text-[11px] text-teal-200/80 font-medium truncate">Competency Assessment - تقييمات الكفاءة</p>
         </div>
       </div>
 
       <!-- Desktop Navigation -->
       <nav class="hidden lg:flex gap-1.5 text-sm font-semibold items-center whitespace-nowrap">
-        <button type="button" onclick="nav('entry')" data-page="entry" class="nav-btn nav-entry active-nav px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+        <button type="button" onclick="nav('entry')" data-page="entry" class="nav-btn nav-entry active-nav px-3.5 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
           <span class="nav-icon"><i class="fas fa-clipboard-check text-xs"></i></span>
           <span>إدخال تقييم</span>
         </button>
-        <button type="button" onclick="nav('individuals')" data-page="individuals" class="nav-btn px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+        <button type="button" onclick="nav('individuals')" data-page="individuals" class="nav-btn px-3.5 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
           <span class="nav-icon"><i class="fas fa-user-nurse text-xs"></i></span>
           <span>التقييمات الفردية</span>
         </button>
-        <button type="button" onclick="nav('settings')" data-page="settings" class="nav-btn nav-settings px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+        <button type="button" onclick="nav('settings')" data-page="settings" class="nav-btn nav-settings px-3.5 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
           <span class="nav-icon"><i class="fas fa-sliders-h text-xs"></i></span>
           <span>الإعدادات</span>
         </button>
@@ -500,84 +964,88 @@
       <!-- Utility Actions + Left Logo (RTL end = Left) -->
       <div class="flex items-center gap-2">
         <div class="hidden md:block relative w-44 xl:w-52">
-          <input type="text" id="header-quick-search" class="pill-search w-full py-1.5 pr-9 pl-4 text-xs text-slate-700 placeholder-slate-400" placeholder="بحث سريع في التقييمات الفردية..." onkeydown="if(event.key==='Enter') handleHeaderQuickSearch(this.value)">
-          <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
+          <input type="text" id="header-quick-search" class="pill-search w-full py-1.5 pr-9 pl-4 text-xs" placeholder="بحث سريع في التقييمات الفردية..." onkeydown="if(event.key==='Enter') handleHeaderQuickSearch(this.value)">
+          <i class="fas fa-search absolute right-3 top-2.5 text-teal-300/80 text-xs pointer-events-none"></i>
         </div>
 
-        <button type="button" onclick="openTursoImportModal(activeCenter ? activeCenter.id : '')" class="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#0284C7] bg-[#0284C7]/10 hover:bg-[#0284C7]/20 transition whitespace-nowrap" title="استيراد سجلات من قاعدة Turso سابقة">
-          <i class="fas fa-database"></i>
+        <button type="button" onclick="openTursoImportModal(activeCenter ? activeCenter.id : '')" class="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-sky-200 bg-sky-500/15 border border-sky-400/30 hover:bg-sky-500/25 hover:text-white whitespace-nowrap" title="استيراد سجلات من قاعدة Turso سابقة">
+          <i class="fas fa-database text-sky-300"></i>
           <span>استيراد Turso</span>
         </button>
 
-        <button type="button" onclick="openCenterLoginPage()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#0D9488] bg-[#0D9488]/10 hover:bg-[#0D9488]/20 transition whitespace-nowrap" title="تغيير المركز أو إدارة المراكز">
-          <i class="fas fa-exchange-alt"></i>
+        <button type="button" onclick="openCenterLoginPage()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-teal-200 bg-teal-500/15 border border-teal-400/35 hover:bg-teal-500/25 hover:text-white whitespace-nowrap" title="تغيير المركز أو إدارة المراكز">
+          <i class="fas fa-exchange-alt text-teal-300"></i>
           <span>تغيير المركز</span>
         </button>
 
-        <button type="button" class="lg:hidden w-9 h-9 rounded-xl bg-[#F1F5F9] text-slate-700 flex items-center justify-center text-lg" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" aria-label="القائمة">
+        <button type="button" class="lg:hidden w-9 h-9 rounded-xl bg-white/10 border border-white/15 text-white hover:bg-white/20 flex items-center justify-center text-lg" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" aria-label="القائمة">
           <i class="fas fa-bars"></i>
         </button>
 
-        <div id="header-logo-left-wrap" class="hidden h-11 max-w-[110px] rounded-xl bg-white border border-[#E2E8F0] px-1.5 py-1 flex items-center justify-center flex-shrink-0 shadow-2xs">
+        <div id="header-logo-left-wrap" class="hidden fx-logo-plate h-11 max-w-[110px] rounded-xl px-1.5 py-1 flex items-center justify-center flex-shrink-0">
           <img id="header-logo-left" alt="الشعار الأيسر للمركز" class="max-h-9 max-w-[96px] w-auto object-contain">
         </div>
       </div>
     </div>
 
     <!-- Mobile Menu -->
-    <div id="mobile-menu" class="hidden bg-white border-t border-[#E2E8F0] text-slate-800 lg:hidden shadow-md">
-      <div class="p-3 border-b border-[#E2E8F0] md:hidden">
+    <div id="mobile-menu" class="hidden bg-slate-900/95 backdrop-blur-xl border-t border-teal-400/20 text-slate-100 lg:hidden shadow-2xl">
+      <div class="p-3 border-b border-white/10 md:hidden">
         <div class="relative">
           <input type="text" class="pill-search w-full py-2 pr-9 pl-4 text-xs" placeholder="بحث سريع في التقييمات الفردية..." onkeydown="if(event.key==='Enter') handleHeaderQuickSearch(this.value)">
-          <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs"></i>
+          <i class="fas fa-search absolute right-3 top-2.5 text-teal-300/80 text-xs"></i>
         </div>
       </div>
-      <button onclick="nav('entry')" class="nav-entry block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">إدخال تقييم</button>
-      <button onclick="nav('individuals')" class="block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">التقييمات الفردية</button>
-      <button onclick="nav('settings')" class="nav-settings block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">الإعدادات</button>
-      <button onclick="document.getElementById('mobile-menu').classList.add('hidden'); openTursoImportModal(activeCenter ? activeCenter.id : '')" class="block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] text-[#0284C7] hover:bg-sky-50"><i class="fas fa-database ml-2"></i>استيراد من Turso</button>
-      <button onclick="openCenterLoginPage()" class="block w-full text-right px-4 py-3 text-sm font-semibold text-[#0D9488] hover:bg-teal-50"><i class="fas fa-exchange-alt ml-2"></i>تغيير المركز / إدارة المراكز</button>
+      <button onclick="nav('entry')" class="nav-entry flex items-center gap-2.5 w-full text-right px-4 py-3 text-sm font-semibold border-b border-white/10 hover:bg-white/10 hover:text-teal-300"><i class="fas fa-clipboard-check text-teal-400 text-xs"></i><span>إدخال تقييم</span></button>
+      <button onclick="nav('individuals')" class="flex items-center gap-2.5 w-full text-right px-4 py-3 text-sm font-semibold border-b border-white/10 hover:bg-white/10 hover:text-teal-300"><i class="fas fa-user-nurse text-sky-400 text-xs"></i><span>التقييمات الفردية</span></button>
+      <button onclick="nav('settings')" class="nav-settings flex items-center gap-2.5 w-full text-right px-4 py-3 text-sm font-semibold border-b border-white/10 hover:bg-white/10 hover:text-teal-300"><i class="fas fa-sliders-h text-teal-400 text-xs"></i><span>الإعدادات</span></button>
+      <button onclick="document.getElementById('mobile-menu').classList.add('hidden'); openTursoImportModal(activeCenter ? activeCenter.id : '')" class="flex items-center gap-2.5 w-full text-right px-4 py-3 text-sm font-semibold border-b border-white/10 text-sky-300 hover:bg-sky-500/15"><i class="fas fa-database text-xs"></i><span>استيراد من Turso</span></button>
+      <button onclick="openCenterLoginPage()" class="flex items-center gap-2.5 w-full text-right px-4 py-3 text-sm font-semibold text-teal-300 hover:bg-teal-500/15"><i class="fas fa-exchange-alt text-xs"></i><span>تغيير المركز / إدارة المراكز</span></button>
     </div>
   </header>
 
   <!-- Main Content -->
   <main id="main-content" class="flex-1 overflow-y-auto p-3 md:p-6 relative">
     
-    <!-- Medical ECG & Shield Loader -->
-    <div id="loader" class="hidden fixed inset-0 bg-white/85 backdrop-blur-xs z-[110] flex flex-col justify-center items-center no-print">
-      <div class="medical-shield-pulse relative w-20 h-20 flex items-center justify-center mb-3">
-        <svg viewBox="0 0 64 64" class="w-16 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 6L12 14V30C12 43.25 20.5 54.4 32 58C43.5 54.4 52 43.25 52 30V14L32 6Z" fill="#0D9488" fill-opacity="0.1" stroke="#0D9488" stroke-width="2.5" stroke-linejoin="round"/>
-          <path class="ecg-loader-line" d="M17 33H24L27.5 23L32 42L36.5 28L39.5 33H47" stroke="#0D9488" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+    <!-- Futuristic Holographic ECG & Shield Loader -->
+    <div id="loader" class="hidden fixed inset-0 bg-slate-950/45 backdrop-blur-md z-[110] flex flex-col justify-center items-center no-print">
+      <div class="bg-white/95 backdrop-blur-xl border border-teal-500/30 rounded-3xl px-9 py-7 shadow-2xl flex flex-col items-center">
+        <div class="medical-shield-pulse relative w-20 h-20 flex items-center justify-center mb-4">
+          <span class="fx-loader-orbit"></span>
+          <span class="fx-loader-orbit-reverse"></span>
+          <svg viewBox="0 0 64 64" class="w-16 h-16 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 6L12 14V30C12 43.25 20.5 54.4 32 58C43.5 54.4 52 43.25 52 30V14L32 6Z" fill="#0D9488" fill-opacity="0.12" stroke="#0D9488" stroke-width="2.5" stroke-linejoin="round"/>
+            <path class="ecg-loader-line" d="M17 33H24L27.5 23L32 42L36.5 28L39.5 33H47" stroke="#0D9488" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="text-[#0F766E] font-bold text-sm tracking-wide">جاري المعالجة السريرية...</p>
       </div>
-      <p class="text-[#0D9488] font-bold text-sm tracking-wide">جاري المعالجة السريرية...</p>
     </div>
 
     <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed bottom-5 left-5 z-[150] flex flex-col gap-2 max-w-sm w-full pointer-events-none no-print"></div>
+    <div id="toast-container" class="fixed bottom-5 left-5 z-[150] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none no-print"></div>
 
     <!-- Center Login & Management Page (صفحة تسجيل الدخول للمراكز) -->
-    <div id="center-login-page" class="fixed inset-0 bg-[#F8FAFC] z-[100] overflow-y-auto no-print">
+    <div id="center-login-page" class="fixed inset-0 z-[100] overflow-y-auto no-print">
        <div class="min-h-screen flex flex-col justify-between">
-          <!-- Top Clinical Banner -->
-          <div class="bg-white border-b border-[#E2E8F0]">
+          <!-- Top Futuristic Obsidian Command Banner -->
+          <div class="futuristic-banner">
              <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                   <div class="w-11 h-11 rounded-2xl bg-[#0D9488]/10 border border-[#0D9488]/20 flex items-center justify-center p-1.5">
+                   <div class="fx-brand-orb w-11 h-11 rounded-2xl flex items-center justify-center p-1.5">
                       <img src="/favicon.svg" alt="شعار النظام" class="w-8 h-8 object-contain">
                    </div>
                    <div>
-                      <h1 class="text-base md:text-lg font-bold text-slate-900">Competency Assessment - تقييمات الكفاءة</h1>
-                      <p class="text-xs text-slate-500">بوابة الدخول وإدارة المراكز الصحية مع العزل الكامل لبيانات كل مركز</p>
+                      <h1 class="text-base md:text-lg font-bold text-white tracking-tight">Competency Assessment - تقييمات الكفاءة</h1>
+                      <p class="text-xs text-teal-200/80">بوابة الدخول وإدارة المراكز الصحية مع العزل الكامل لبيانات كل مركز</p>
                    </div>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
-                   <button type="button" onclick="openTursoImportModal('')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0284C7]/10 text-[#0284C7] hover:bg-[#0284C7]/20 transition">
-                      <i class="fas fa-database"></i>
+                   <button type="button" onclick="openTursoImportModal('')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-500/15 border border-sky-400/35 text-sky-200 hover:bg-sky-500/25 hover:text-white">
+                      <i class="fas fa-database text-sky-300"></i>
                       <span>استيراد من Turso سابق</span>
                    </button>
-                   <button type="button" onclick="openAddCenterModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0D9488] text-white hover:bg-[#0F766E] transition shadow-xs">
+                   <button type="button" onclick="openAddCenterModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0D9488] text-white hover:bg-[#0F766E]">
                       <i class="fas fa-plus-circle"></i>
                       <span>إضافة مركز جديد</span>
                    </button>
@@ -588,17 +1056,18 @@
           <!-- Center Login Content -->
           <div class="max-w-5xl w-full mx-auto px-4 py-6 md:py-10 flex-1 space-y-6">
              <!-- Quick Center Name Entry Card -->
-             <div class="bento-card p-6 md:p-8 bg-white">
+             <div class="bento-card p-6 md:p-8">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
                    <div>
-                      <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0D9488] bg-[#0D9488]/10 px-3 py-1 rounded-full mb-2">
-                         <i class="fas fa-hospital-alt"></i> تسجيل الدخول باسم المركز
-                      </span>
+                      <p class="text-xs font-bold text-[#0D9488] mb-1.5 flex items-center gap-1.5">
+                         <i class="fas fa-hospital-alt"></i>
+                         <span>تسجيل الدخول باسم المركز</span>
+                      </p>
                       <h2 class="text-xl md:text-2xl font-bold text-slate-900">اختر أو اكتب اسم المركز للدخول</h2>
                       <p class="text-xs text-slate-500 mt-1">عند تسجيل الدخول باسم أي مركز ستظهر فقط بياناته وإعداداته وتقاريره معزولة تماماً عن باقي المراكز.</p>
                    </div>
                    <div id="center-return-active-wrap" class="hidden">
-                      <button type="button" onclick="hide('center-login-page')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#F1F5F9] text-slate-700 hover:bg-slate-200 transition">
+                      <button type="button" onclick="hide('center-login-page')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200">
                          <i class="fas fa-arrow-right"></i>
                          <span>العودة للمركز الحالي</span>
                       </button>
@@ -608,14 +1077,14 @@
                 <div class="flex flex-col sm:flex-row gap-3">
                    <div class="relative flex-1">
                       <input type="text" id="center-login-input" list="centers-datalist" autocomplete="off"
-                         class="w-full border border-[#CBD5E1] bg-[#F8FAFC] py-3 pr-11 pl-4 rounded-xl text-sm md:text-base font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 transition"
+                         class="w-full border border-slate-300/80 bg-white/90 py-3 pr-11 pl-4 rounded-xl text-sm md:text-base font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-4 focus:ring-[#14B8A6]/15 transition"
                          placeholder="اكتب اسم المركز أو ابحث في المراكز المسجلة..."
                          oninput="renderCentersGrid(this.value)"
                          onkeydown="if(event.key==='Enter') handleCenterLoginSubmit()">
-                      <i class="fas fa-hospital text-slate-400 absolute right-4 top-3.5 text-base pointer-events-none"></i>
+                      <i class="fas fa-hospital text-[#0D9488]/70 absolute right-4 top-3.5 text-base pointer-events-none"></i>
                       <datalist id="centers-datalist"></datalist>
                    </div>
-                   <button type="button" onclick="handleCenterLoginSubmit()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white px-7 py-3 rounded-xl font-bold text-sm md:text-base transition shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
+                   <button type="button" onclick="handleCenterLoginSubmit()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white px-7 py-3 rounded-xl font-bold text-sm md:text-base flex items-center justify-center gap-2 whitespace-nowrap">
                       <i class="fas fa-sign-in-alt"></i>
                       <span>دخول إلى المركز</span>
                    </button>
@@ -1368,8 +1837,8 @@
     <!-- 2. ENTRY FORM -->
     <section id="entry" class="page hidden max-w-5xl mx-auto">
       <div class="bento-card p-5 md:p-6">
-         <div class="flex items-center gap-3 mb-5 pb-3 border-b border-[#E2E8F0]">
-            <span class="w-10 h-10 rounded-2xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-base">
+         <div class="flex items-center gap-3 mb-5 pb-3 border-b border-slate-200/80">
+            <span class="fx-icon-orb w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0D9488]/15 to-[#06B6D4]/15 border border-[#0D9488]/25 text-[#0D9488] flex items-center justify-center text-base">
                <i class="fas fa-clipboard-check"></i>
             </span>
             <div>
@@ -1517,16 +1986,24 @@
     <section id="settings" class="page hidden max-w-6xl mx-auto">
        <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
          <div class="flex items-center gap-3">
-           <h2 class="text-xl md:text-2xl font-bold text-slate-900">إعدادات المركز</h2>
-           <span id="settings-active-center-badge" class="text-xs bg-[#0D9488]/10 text-[#0D9488] px-3 py-1 rounded-full font-bold"></span>
+           <span class="fx-icon-orb w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0D9488]/15 to-[#06B6D4]/15 border border-[#0D9488]/25 text-[#0D9488] flex items-center justify-center text-sm">
+             <i class="fas fa-sliders-h"></i>
+           </span>
+           <div>
+             <h2 class="text-xl md:text-2xl font-bold text-slate-900">إعدادات المركز</h2>
+             <span id="settings-active-center-badge" class="text-xs font-semibold text-[#0D9488]"></span>
+           </div>
          </div>
-         <button id="btn-save-settings" onclick="saveConfig()" class="bg-[#0D9488] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#0F766E] transition shadow-xs">حفظ الكل</button>
+         <button id="btn-save-settings" onclick="saveConfig()" class="bg-[#0D9488] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#0F766E] flex items-center gap-2">
+           <i class="fas fa-save"></i>
+           <span>حفظ الكل</span>
+         </button>
        </div>
 
        <div class="space-y-4">
           <div class="bento-card p-5">
              <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <span class="w-7 h-7 rounded-lg bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-hospital"></i></span>
+                <span class="fx-icon-orb w-8 h-8 rounded-xl bg-gradient-to-br from-[#0D9488]/15 to-[#06B6D4]/15 border border-[#0D9488]/25 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-hospital"></i></span>
                 بيانات المركز / المنشأة
              </h3>
              <div>
@@ -1586,19 +2063,19 @@
              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                      <span class="w-7 h-7 rounded-lg bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-xs"><i class="fas fa-database"></i></span>
+                      <span class="fx-icon-orb w-8 h-8 rounded-xl bg-gradient-to-br from-[#0284C7]/15 to-[#06B6D4]/15 border border-[#0284C7]/25 text-[#0284C7] flex items-center justify-center text-xs"><i class="fas fa-database"></i></span>
                       استيراد سجلات من قاعدة Turso سابقة وإدارة المركز
                    </h3>
                    <p class="text-xs text-slate-500 mt-1">يمكنك جلب سجلات التقييم والإعدادات السابقة من قاعدة بيانات Turso قديمة إلى هذا المركز، أو تبديل/حذف المركز.</p>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
-                   <button type="button" onclick="openTursoImportModal(activeCenter ? activeCenter.id : '')" class="bg-[#0284C7] hover:bg-[#0369A1] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                   <button type="button" onclick="openTursoImportModal(activeCenter ? activeCenter.id : '')" class="bg-[#0284C7] hover:bg-[#0369A1] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
                       <i class="fas fa-cloud-download-alt"></i> استيراد من Turso سابق
                    </button>
-                   <button type="button" onclick="openCenterLoginPage()" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                   <button type="button" onclick="openCenterLoginPage()" class="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
                       <i class="fas fa-exchange-alt"></i> تغيير المركز
                    </button>
-                   <button type="button" onclick="if(activeCenter) openDeleteCenterModal(activeCenter.id)" class="bg-[#FEE2E2] hover:bg-red-200 text-[#B91C1C] px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                   <button type="button" onclick="if(activeCenter) openDeleteCenterModal(activeCenter.id)" class="bg-[#FEE2E2] hover:bg-red-200 border border-red-200/80 text-[#B91C1C] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
                       <i class="fas fa-trash-alt"></i> حذف المركز وبياناته
                    </button>
                 </div>
@@ -1607,7 +2084,7 @@
 
           <div class="bento-card p-5">
              <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
-                <span class="w-7 h-7 rounded-lg bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-user-check"></i></span>
+                <span class="fx-icon-orb w-8 h-8 rounded-xl bg-gradient-to-br from-[#0D9488]/15 to-[#06B6D4]/15 border border-[#0D9488]/25 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-user-check"></i></span>
                 القائمين بالتقييم
              </h3>
              <textarea id="set-insp" class="input h-24" data-extra="h-24" placeholder="كل اسم في سطر"></textarea>
@@ -1702,7 +2179,7 @@
        <div class="bento-card p-5 md:p-6 print:border-none print:shadow-none print:p-0 print:rounded-none">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-5 pb-3 border-b border-[#E2E8F0] no-print">
              <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-2xl bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-base">
+                <span class="fx-icon-orb w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0284C7]/15 to-[#06B6D4]/15 border border-[#0284C7]/25 text-[#0284C7] flex items-center justify-center text-base">
                    <i class="fas fa-user-nurse"></i>
                 </span>
                 <div>
@@ -2013,13 +2490,13 @@
   </main>
 
   <!-- Footer -->
-  <footer class="bg-white border-t border-[#E2E8F0] text-slate-500 text-center py-2.5 text-xs no-print flex-shrink-0">
+  <footer class="bg-white/75 backdrop-blur-md border-t border-slate-200/80 text-slate-500 text-center py-2.5 text-xs no-print flex-shrink-0">
     &copy; 2026 Dr. Fady Ezzat. All Rights Reserved
   </footer>
 
   <script>
     // --- Styles Helper ---
-    const INPUT_CLASS = "w-full border border-[#E2E8F0] px-3 py-2 rounded-xl focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15 bg-white text-slate-800 text-sm transition";
+    const INPUT_CLASS = "w-full border border-slate-300/80 px-3 py-2 rounded-xl focus:outline-none focus:border-[#0D9488] focus:ring-4 focus:ring-[#14B8A6]/15 bg-white/95 hover:border-teal-400/60 text-slate-800 text-sm transition duration-200";
     document.querySelectorAll('.input').forEach(el => {
       const extra = el.dataset.extra || '';
       el.className = INPUT_CLASS + (extra ? ' ' + extra : '');
@@ -2071,10 +2548,10 @@
        const container = el('toast-container');
        if (!container) return;
        const colors = {
-          success: 'bg-[#0D9488] text-white border-teal-700',
-          info: 'bg-[#0284C7] text-white border-sky-700',
-          error: 'bg-[#EF4444] text-white border-red-700',
-          warning: 'bg-[#F59E0B] text-white border-amber-700'
+          success: 'bg-[#0D9488]/95 text-white border-teal-400/50',
+          info: 'bg-[#0284C7]/95 text-white border-sky-400/50',
+          error: 'bg-[#EF4444]/95 text-white border-red-400/50',
+          warning: 'bg-[#F59E0B]/95 text-white border-amber-300/50'
        };
        const icons = {
           success: 'fa-check-circle',
@@ -2083,12 +2560,12 @@
           warning: 'fa-exclamation-triangle'
        };
        const toast = document.createElement('div');
-       toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg border text-xs font-bold transition transform duration-200 ${colors[type] || colors.success}`;
-       toast.innerHTML = `<i class="fas ${icons[type] || icons.success} text-sm flex-shrink-0"></i><span class="leading-relaxed">${escapeHtml(message)}</span>`;
+       toast.className = `fx-toast-item pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold transition transform duration-200 ${colors[type] || colors.success}`;
+       toast.innerHTML = `<i class="fas ${icons[type] || icons.success} text-sm flex-shrink-0"></i><span class="leading-relaxed">${escapeHtml(message)}</span><span class="fx-toast-progress"></span>`;
        container.appendChild(toast);
        setTimeout(() => {
           toast.style.opacity = '0';
-          toast.style.transform = 'translateY(8px)';
+          toast.style.transform = 'translateY(8px) scale(0.96)';
           setTimeout(() => toast.remove(), 220);
        }, 3800);
     }
@@ -2135,8 +2612,16 @@
        const allowedPages = ['entry', 'individuals', 'settings'];
        if (!allowedPages.includes(pageId)) pageId = 'entry';
        
-       document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+       document.querySelectorAll('.page').forEach(p => {
+          p.classList.add('hidden');
+          p.classList.remove('page-reveal');
+       });
        show(pageId);
+       const activePageEl = el(pageId);
+       if (activePageEl) {
+          void activePageEl.offsetWidth;
+          activePageEl.classList.add('page-reveal');
+       }
        document.getElementById('mobile-menu').classList.add('hidden');
 
        document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -5507,19 +5992,20 @@
        }
 
        grid.innerHTML = '';
-       filtered.forEach(c => {
+       filtered.forEach((c, idx) => {
           const isCurrent = activeCenter && activeCenter.id === c.id;
           const card = document.createElement('div');
-          card.className = `bento-card p-5 flex flex-col justify-between gap-4 bg-white ${isCurrent ? 'ring-2 ring-[#0D9488] border-[#0D9488]' : ''}`;
+          card.style.animationDelay = `${Math.min(idx * 55, 360)}ms`;
+          card.className = `bento-card center-portal-card p-5 flex flex-col justify-between gap-4 ${isCurrent ? 'ring-2 ring-[#14B8A6] border-[#0D9488]' : ''}`;
           card.innerHTML = `
              <div class="flex items-start justify-between gap-3">
                 <div class="flex items-start gap-3 min-w-0">
-                   <div class="w-11 h-11 rounded-2xl ${isCurrent ? 'bg-[#0D9488] text-white' : 'bg-[#0D9488]/10 text-[#0D9488]'} flex items-center justify-center flex-shrink-0 text-base">
+                   <div class="fx-icon-orb w-11 h-11 rounded-2xl ${isCurrent ? 'bg-gradient-to-br from-[#0D9488] to-[#0284C7] text-white shadow-md' : 'bg-gradient-to-br from-[#0D9488]/15 to-[#06B6D4]/15 border border-[#0D9488]/25 text-[#0D9488]'} flex items-center justify-center flex-shrink-0 text-base">
                       <i class="fas fa-hospital-alt"></i>
                    </div>
                    <div class="min-w-0">
                       <h4 class="font-bold text-slate-900 text-sm md:text-base leading-snug break-words">${escapeHtml(c.name)}</h4>
-                      ${isCurrent ? '<span class="inline-block mt-1 text-[10px] font-bold bg-[#DCFCE7] text-[#047857] px-2 py-0.5 rounded-full">المركز النشط حالياً</span>' : ''}
+                      ${isCurrent ? '<span class="inline-block mt-1 text-[11px] font-bold text-[#0D9488]">المركز النشط حالياً</span>' : ''}
                    </div>
                 </div>
              </div>
@@ -6744,6 +7230,46 @@
        
        window.google = { script: { run: createRunner(null, null) } };
      }
+
+    // --- Futuristic Kinetic Interaction Engine (Pointer Ripple + Card Spotlight) ---
+    (function initFuturisticInteractions() {
+       const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+       if (reducedMotion) return;
+
+       // 1. Tactile optical ripple wave on every button click
+       document.addEventListener('pointerdown', (ev) => {
+          const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+          if (!btn || btn.disabled || btn.dataset.noRipple === 'true') return;
+          const rect = btn.getBoundingClientRect();
+          if (!rect.width || !rect.height) return;
+          const size = Math.max(rect.width, rect.height) * 0.9;
+          const wave = document.createElement('span');
+          wave.className = 'fx-ripple-wave';
+          wave.style.width = `${size}px`;
+          wave.style.height = `${size}px`;
+          wave.style.left = `${ev.clientX - rect.left - size / 2}px`;
+          wave.style.top = `${ev.clientY - rect.top - size / 2}px`;
+          btn.appendChild(wave);
+          setTimeout(() => wave.remove(), 480);
+       }, { passive: true });
+
+       // 2. Cursor-tracking optical sheen on .bento-card surfaces
+       let rafCard = null;
+       let lastPoint = null;
+       document.addEventListener('pointermove', (ev) => {
+          const card = ev.target && ev.target.closest ? ev.target.closest('.bento-card') : null;
+          if (!card) return;
+          lastPoint = { card, x: ev.clientX, y: ev.clientY };
+          if (rafCard) return;
+          rafCard = requestAnimationFrame(() => {
+             rafCard = null;
+             if (!lastPoint) return;
+             const rect = lastPoint.card.getBoundingClientRect();
+             lastPoint.card.style.setProperty('--mx', `${lastPoint.x - rect.left}px`);
+             lastPoint.card.style.setProperty('--my', `${lastPoint.y - rect.top}px`);
+          });
+       }, { passive: true });
+    })();
 
     // Init: فتح صفحة تسجيل الدخول للمراكز وتحميل قائمة المراكز فوراً
     window.onload = () => {
