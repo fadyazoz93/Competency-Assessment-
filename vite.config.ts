@@ -26,9 +26,11 @@ export default defineConfig(({ mode }) => {
                 await handler(req, res);
               } catch (err: any) {
                 console.error("Vite API middleware error:", err);
-                res.statusCode = 500;
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ success: false, error: err.message || String(err) }));
+                if (!res.headersSent) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ success: false, error: err.message || String(err) }));
+                }
               }
             });
           }
