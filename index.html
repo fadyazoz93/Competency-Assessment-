@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Competency Assessment - تقييمات الكفاءة</title>
   <meta name="description" content="Competency Assessment - تقييمات الكفاءة - نظام تقييم الكفاءة المهنية وإدارة تقييمات المراكز">
   <meta property="og:title" content="Competency Assessment - تقييمات الكفاءة">
@@ -1938,25 +1941,6 @@
               <label class="label">الوظيفة <span class="text-[#EF4444]">*</span></label>
               <input type="text" id="target_job_id" class="input" placeholder="أدخل الوظيفة / المسمى الوظيفي" required>
             </div>
-            
-            <!-- Session Counter Bento Sub-card -->
-            <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-3.5 flex flex-col justify-center">
-               <div class="flex justify-between items-center text-sm text-slate-800 font-bold mb-1">
-                 <span class="flex items-center gap-1.5">
-                   <i class="fas fa-bookmark text-[#0D9488]"></i> رقم الجلسة الحالية:
-                 </span>
-                 <span id="session-display" class="tabular-nums text-sm font-bold text-[#0D9488] bg-white px-3 py-1 rounded-full border border-[#E2E8F0]">-</span>
-               </div>
-               <div class="flex justify-between items-center text-xs text-slate-600 mt-2 border-t border-[#E2E8F0] pt-2 flex-wrap gap-2">
-                 <div class="flex items-center gap-1.5">
-                   <span>الجلسات هذا الشهر:</span>
-                   <span id="session-count-text" class="tabular-nums font-bold text-slate-900">0</span>
-                 </div>
-                 <button type="button" id="btn-multiply-from-entry" onclick="openMultiplyFromEntry()" class="hidden bg-[#0284C7] hover:bg-[#0369A1] text-white text-[11px] font-bold px-3 py-1.5 rounded-full transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
-                   <i class="fas fa-layer-group text-[10px]"></i> مضاعفة الجلسات
-                 </button>
-               </div>
-            </div>
          </div>
 
          <!-- Warning -->
@@ -2271,6 +2255,9 @@
                 </div>
              </div>
              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="refreshIndividualsAndSettings()" class="bg-sky-50 text-[#0284C7] border border-sky-200 px-3.5 py-2 rounded-xl hover:bg-[#0284C7] hover:text-white text-xs font-bold flex items-center gap-1.5 transition" title="جلب أحدث التعديلات من قاعدة البيانات">
+                   <i class="fas fa-sync-alt"></i> تحديث
+                </button>
                 <button type="button" onclick="openSampleIndividualFormPreview()" class="bg-[#0D9488]/10 text-[#0F766E] border border-[#0D9488]/25 px-3.5 py-2 rounded-xl hover:bg-[#0D9488] hover:text-white text-xs font-bold flex items-center gap-1.5 transition">
                    <i class="fas fa-eye"></i> معاينة نموذج الاستمارة
                 </button>
@@ -2284,7 +2271,7 @@
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 mb-4 no-print">
              <div>
                 <label class="label">الشهر</label>
-                <input type="month" id="indiv-month" class="input tabular-nums" onchange="filterIndividuals()">
+                <input type="month" id="indiv-month" class="input tabular-nums" onchange="indivMonthTouchedByUser = true; filterIndividuals()">
              </div>
              <div>
                 <label class="label">المؤشر</label>
@@ -2712,11 +2699,127 @@
           else btn.classList.remove('active-nav');
        });
        
-       if (pageId === 'entry') initEntry();
-       if (pageId === 'individuals') loadIndividuals();
-       if (pageId === 'settings') renderSettingsPage();
-       if (Object.keys(config).length === 0) loadSettings(true);
+       if (pageId === 'entry') {
+          initEntry();
+          refreshSettingsQuietly();
+       }
+       if (pageId === 'individuals') {
+          loadIndividuals();
+          refreshSettingsQuietly();
+       }
+       if (pageId === 'settings') {
+          loadSettings(true);
+       } else if (Object.keys(config).length === 0) {
+          loadSettings(true);
+       }
     }
+
+    let lastQuietSyncTs = 0;
+    let isQuietSyncRunning = false;
+
+    function isAnyBlockingModalOpen() {
+       const modalIds = [
+          'edit-indiv-modal',
+          'duplicate-indiv-modal',
+          'delete-indiv-modal',
+          'indiv-print-preview-modal',
+          'edit-kpi-modal',
+          'dup-kpi-modal',
+          'add-proc-modal',
+          'rename-proc-modal',
+          'rename-ind-modal',
+          'kpi-confirm-modal',
+          'turso-import-modal'
+       ];
+       return modalIds.some(id => {
+          const node = el(id);
+          return node && !node.classList.contains('hidden');
+       });
+    }
+
+    function getCurrentActivePageId() {
+       const pages = ['entry', 'individuals', 'settings'];
+       for (const id of pages) {
+          const node = el(id);
+          if (node && !node.classList.contains('hidden')) return id;
+       }
+       return '';
+    }
+
+    function refreshSettingsQuietly(onDone) {
+       if (!activeCenter) {
+          if (typeof onDone === 'function') onDone();
+          return;
+       }
+       google.script.run
+          .withSuccessHandler(data => {
+             if (data && typeof data === 'object') {
+                config = data;
+                if (!config.hospital_name && activeCenter) {
+                   config.hospital_name = activeCenter.name;
+                }
+                updateCenterNameBindings(config.hospital_name);
+                updateHeaderLogos(config.logo_right_url, config.logo_left_url);
+                fillDropdowns();
+                const indSelect = el('indiv-indicator');
+                if (indSelect) {
+                   const curSelect = indSelect.value;
+                   const uniqueInds = [...new Set((config.indicators || []).map(i => i.indicator).filter(Boolean))];
+                   indSelect.innerHTML = '<option value="">جميع المؤشرات</option>' +
+                      uniqueInds.map(ind => `<option value="${escapeHtml(ind)}">${escapeHtml(ind)}</option>`).join('');
+                   indSelect.value = curSelect;
+                }
+             }
+             if (typeof onDone === 'function') onDone();
+          })
+          .withFailureHandler(() => {
+             if (typeof onDone === 'function') onDone();
+          })
+          .getAppSettings();
+    }
+
+    function refreshIndividualsAndSettings() {
+       if (!activeCenter) return;
+       loadIndividuals(false);
+       refreshSettingsQuietly(() => {
+          showToast('تم تحديث البيانات بنجاح.', 'success');
+       });
+    }
+
+    function syncActiveViewFromServer(forceNow = false) {
+       if (!activeCenter) return;
+       if (document.visibilityState === 'hidden') return;
+       if (isAnyBlockingModalOpen()) return;
+       const now = Date.now();
+       if (!forceNow && (isQuietSyncRunning || now - lastQuietSyncTs < 5000)) return;
+       lastQuietSyncTs = now;
+       isQuietSyncRunning = true;
+
+       const pageId = getCurrentActivePageId();
+       refreshSettingsQuietly(() => {
+          if (pageId === 'individuals') {
+             loadIndividuals(true, () => {
+                isQuietSyncRunning = false;
+             });
+          } else {
+             isQuietSyncRunning = false;
+          }
+       });
+    }
+
+    document.addEventListener('visibilitychange', () => {
+       if (document.visibilityState === 'visible') {
+          syncActiveViewFromServer(false);
+       }
+    });
+    window.addEventListener('focus', () => {
+       syncActiveViewFromServer(false);
+    });
+    setInterval(() => {
+       if (getCurrentActivePageId() === 'individuals') {
+          syncActiveViewFromServer(false);
+       }
+    }, 20000);
 
     // --- Header Quick Search ---
     function handleHeaderQuickSearch(query) {
@@ -3320,7 +3423,7 @@
        if (el('entry-reevaluation-date')) el('entry-reevaluation-date').value = '';
        hide('questions-area');
        hide('limit-msg');
-       el('session-display').innerText = '-';
+       if (el('session-display')) el('session-display').innerText = '-';
        if(el('session-count-text')) el('session-count-text').innerText = '0';
        const btnMult = el('btn-multiply-from-entry');
        if (btnMult) btnMult.classList.add('hidden');
@@ -3345,7 +3448,7 @@
     function applySessionResult(res) {
        currentSession = res;
        const nextSessionNum = res.nextSession || (res.currentCount + 1);
-       el('session-display').innerText = `الجلسة رقم ${nextSessionNum}`;
+       if (el('session-display')) el('session-display').innerText = `الجلسة رقم ${nextSessionNum}`;
        if(el('session-count-text')) {
           el('session-count-text').innerText = `${res.currentCount || 0} جلسة/جلسات`;
        }
@@ -3367,7 +3470,7 @@
        const ind = el('indicator').value;
        
        if(!date || !ind) {
-          el('session-display').innerText = '-';
+          if (el('session-display')) el('session-display').innerText = '-';
           if(el('session-count-text')) el('session-count-text').innerText = '0';
           const btnMult = el('btn-multiply-from-entry');
           if (btnMult) btnMult.classList.add('hidden');
@@ -5454,12 +5557,17 @@
        };
     }
 
-    function loadIndividuals() {
-       loading(true);
+    let indivMonthTouchedByUser = false;
+
+    function loadIndividuals(silent = false, onComplete) {
+       if (!silent) loading(true);
        
        const today = new Date();
        const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
-       if(!el('indiv-month').value) el('indiv-month').value = currentMonth;
+       const monthEl = el('indiv-month');
+       if (monthEl && !monthEl.value && !indivMonthTouchedByUser) {
+          monthEl.value = currentMonth;
+       }
 
         google.script.run.withSuccessHandler(data => {
           allIndividualsData = data || [];
@@ -5467,6 +5575,14 @@
           selectedIndividualKeys.forEach(k => {
              if (!validKeys.has(k)) selectedIndividualKeys.delete(k);
           });
+
+          if (monthEl && monthEl.value && !indivMonthTouchedByUser && allIndividualsData.length > 0) {
+             const [y, m] = monthEl.value.split('-');
+             const hasInMonth = allIndividualsData.some(row => row.year == y && row.month == m);
+             if (!hasInMonth) {
+                monthEl.value = '';
+             }
+          }
           
           const indSelect = el('indiv-indicator');
           const curSelect = indSelect.value;
@@ -5476,10 +5592,14 @@
           indSelect.value = curSelect;
           
           filterIndividuals();
-          loading(false);
+          if (!silent) loading(false);
+          if (typeof onComplete === 'function') onComplete();
        }).withFailureHandler(err => {
-          loading(false);
-          showToast('تعذر تحميل التقييمات الفردية: ' + err, 'error');
+          if (!silent) {
+             loading(false);
+             showToast('تعذر تحميل التقييمات الفردية: ' + err, 'error');
+          }
+          if (typeof onComplete === 'function') onComplete();
        }).fetchIndividualAssessments();
     }
 
@@ -5761,20 +5881,22 @@
 
     function printIndividualFormsBySessionIds(sessionsIdsList) {
        loading(true);
-       google.script.run
-          .withSuccessHandler(assessments => {
-             loading(false);
-             if (!Array.isArray(assessments) || assessments.length === 0) {
-                showToast('تعذر تحميل تفاصيل التقييمات المحددة.', 'error');
-                return;
-             }
-             openIndividualPrintPreviewModal(assessments);
-          })
-          .withFailureHandler(err => {
-             loading(false);
-             showToast('خطأ أثناء تجهيز الاستمارات للطباعة: ' + err, 'error');
-          })
-          .fetchMultipleIndividualAssessments(sessionsIdsList);
+       refreshSettingsQuietly(() => {
+          google.script.run
+             .withSuccessHandler(assessments => {
+                loading(false);
+                if (!Array.isArray(assessments) || assessments.length === 0) {
+                   showToast('تعذر تحميل تفاصيل التقييمات المحددة.', 'error');
+                   return;
+                }
+                openIndividualPrintPreviewModal(assessments);
+             })
+             .withFailureHandler(err => {
+                loading(false);
+                showToast('خطأ أثناء تجهيز الاستمارات للطباعة: ' + err, 'error');
+             })
+             .fetchMultipleIndividualAssessments(sessionsIdsList);
+       });
     }
 
     function renderBatchIndividualPrintCards(assessments) {
@@ -7701,11 +7823,16 @@
                     if (!API_URL) {
                         throw new Error("يرجى إعداد وتوفير VITE_API_URL أولاً.");
                     }
-                    const response = await fetch(API_URL, {
+                    const reqUrl = API_URL + (API_URL.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                    const response = await fetch(reqUrl, {
                        method: 'POST',
                        credentials: 'same-origin',
                        cache: 'no-store',
-                       headers: { 'Content-Type': 'application/json' },
+                       headers: {
+                          'Content-Type': 'application/json',
+                          'Cache-Control': 'no-cache, no-store, must-revalidate',
+                          'Pragma': 'no-cache'
+                       },
                        body: requestBody
                     });
 

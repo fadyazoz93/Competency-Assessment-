@@ -504,10 +504,11 @@ interface CacheEntry<T> {
   timestamp: number;
 }
 
-const SETTINGS_CACHE_TTL = 10 * 60 * 1000; // 10 دقائق
-const SUMMARY_CACHE_TTL = 2 * 60 * 1000; // دقيقتان
-const SESSION_STATUS_TTL = 30 * 1000; // 30 ثانية
-const DASHBOARD_CACHE_TTL = 2 * 60 * 1000; // دقيقتان
+// تعطيل التخزين المؤقت طويل المدى بين الطلبات لضمان التزامن الفوري بين الهاتف والحاسب عبر خوادم Vercel المتعددة
+const SETTINGS_CACHE_TTL = 0;
+const SUMMARY_CACHE_TTL = 0;
+const SESSION_STATUS_TTL = 0;
+const DASHBOARD_CACHE_TTL = 0;
 
 const settingsCacheByCenter = new Map<string, CacheEntry<any>>();
 const procMapCacheByCenter = new Map<string, Record<string, string>>();
@@ -608,12 +609,9 @@ async function getCenterSettingsInternal(centerId: string, centerNameFallback?: 
   return settings;
 }
 
-// بناء خريطة ربط السؤال بالإجراء في الذاكرة الخاصة بكل مركز
+// بناء خريطة ربط السؤال بالإجراء مباشرة من أحدث إعدادات المركز في قاعدة البيانات
 async function getQuestionToProcedureMap(centerId: string): Promise<Record<string, string>> {
-  const cached = procMapCacheByCenter.get(centerId);
-  if (cached) return cached;
-
-  const settings = await getCenterSettingsInternal(centerId);
+  const settings = await getCenterSettingsInternal(centerId, undefined, true);
   const map: Record<string, string> = {};
   const inds = settings.indicators || [];
   for (const item of inds) {
@@ -624,7 +622,6 @@ async function getQuestionToProcedureMap(centerId: string): Promise<Record<strin
       map[`${ind}___${q}`] = proc;
     }
   }
-  procMapCacheByCenter.set(centerId, map);
   return map;
 }
 
@@ -1488,7 +1485,10 @@ export default async function handler(req: any, res: any) {
   if (res.setHeader) {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Cache-Control, Pragma");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
   }
 
   if (req.method === "OPTIONS") {
@@ -2841,13 +2841,23 @@ export default async function handler(req: any, res: any) {
         }
 
         const rawDate = String(payload.date || "").trim();
-        const dateObj = new Date(rawDate);
-        if (!rawDate || isNaN(dateObj.getTime())) {
-          throw new Error("يرجى إدخال تاريخ صالح.");
+        const isoMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        let dateStr = "";
+        let month = 0;
+        let year = 0;
+        if (isoMatch) {
+          year = Number(isoMatch[1]);
+          month = Number(isoMatch[2]);
+          dateStr = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        } else {
+          const dateObj = new Date(rawDate);
+          if (!rawDate || isNaN(dateObj.getTime())) {
+            throw new Error("يرجى إدخال تاريخ صالح.");
+          }
+          dateStr = dateObj.toISOString().slice(0, 10);
+          month = dateObj.getUTCMonth() + 1;
+          year = dateObj.getUTCFullYear();
         }
-        const dateStr = dateObj.toISOString().slice(0, 10);
-        const month = dateObj.getMonth() + 1;
-        const year = dateObj.getFullYear();
 
         const inspector = String(payload.inspector || "").trim();
         const recommendations = String(payload.recommendations || "").trim();
@@ -2970,13 +2980,23 @@ export default async function handler(req: any, res: any) {
         }
 
         const rawDate = String(payload.date || first.Date || "").trim();
-        const dateObj = new Date(rawDate);
-        if (!rawDate || isNaN(dateObj.getTime())) {
-          throw new Error("يرجى إدخال تاريخ صالح.");
+        const isoMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        let dateStr = "";
+        let month = 0;
+        let year = 0;
+        if (isoMatch) {
+          year = Number(isoMatch[1]);
+          month = Number(isoMatch[2]);
+          dateStr = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        } else {
+          const dateObj = new Date(rawDate);
+          if (!rawDate || isNaN(dateObj.getTime())) {
+            throw new Error("يرجى إدخال تاريخ صالح.");
+          }
+          dateStr = dateObj.toISOString().slice(0, 10);
+          month = dateObj.getUTCMonth() + 1;
+          year = dateObj.getUTCFullYear();
         }
-        const dateStr = dateObj.toISOString().slice(0, 10);
-        const month = dateObj.getMonth() + 1;
-        const year = dateObj.getFullYear();
 
         const inspector = String(payload.inspector !== undefined ? payload.inspector : first.Inspector || "").trim();
         const recommendations = String(
