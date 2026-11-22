@@ -911,6 +911,13 @@
         color: #0f172a !important;
         font-weight: 800 !important;
       }
+      .indiv-print-card .indiv-print-table td[rowspan] {
+        vertical-align: middle !important;
+        background-color: #f8fafc !important;
+        color: #0f766e !important;
+        font-weight: 800 !important;
+        text-align: center !important;
+      }
 
       /* إلغاء ومنع ظهور سطر التذييل القديم للتقارير الملغاة فقط (دون التأثير على استمارة التقييم الفردي) */
       .report-footer, .print-footer, .officer-signature, .report-signatures, 
@@ -934,7 +941,7 @@
       <!-- Brand Identity + Right Logo (RTL start = Right) -->
       <div class="flex items-center gap-3 min-w-0">
         <div id="header-logo-right-wrap" class="hidden fx-logo-plate h-11 max-w-[110px] rounded-xl px-1.5 py-1 flex items-center justify-center flex-shrink-0">
-          <img id="header-logo-right" alt="الشعار الأيمن للمركز" class="max-h-9 max-w-[96px] w-auto object-contain">
+          <img id="header-logo-right" referrerpolicy="no-referrer" alt="الشعار الأيمن للمركز" class="max-h-9 max-w-[96px] w-auto object-contain">
         </div>
         <div id="header-default-logo" class="fx-brand-orb w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 p-1">
           <img src="/favicon.svg" alt="شعار النظام" class="w-8 h-8 object-contain">
@@ -983,7 +990,7 @@
         </button>
 
         <div id="header-logo-left-wrap" class="hidden fx-logo-plate h-11 max-w-[110px] rounded-xl px-1.5 py-1 flex items-center justify-center flex-shrink-0">
-          <img id="header-logo-left" alt="الشعار الأيسر للمركز" class="max-h-9 max-w-[96px] w-auto object-contain">
+          <img id="header-logo-left" referrerpolicy="no-referrer" alt="الشعار الأيسر للمركز" class="max-h-9 max-w-[96px] w-auto object-contain">
         </div>
       </div>
     </div>
@@ -2084,37 +2091,51 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <!-- Right Logo -->
                    <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5">
-                      <div class="flex items-center justify-between mb-1.5">
+                      <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
                          <label class="label !mb-0" for="set-logo-right">رابط اللوجو الأيمن (يمين الـ Header)</label>
-                         <button type="button" onclick="clearLogoInput('right')" class="text-[11px] text-slate-400 hover:text-[#EF4444] transition font-semibold" title="مسح الرابط">
-                            <i class="fas fa-times-circle"></i> مسح
-                         </button>
+                         <div class="flex items-center gap-2">
+                            <input type="file" id="upload-logo-right" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="handleLogoFileSelected('right', this)">
+                            <button type="button" onclick="triggerLogoFileUpload('right')" class="text-[11px] bg-teal-50 text-[#0F766E] hover:bg-teal-100 border border-teal-200 px-2 py-0.5 rounded-lg transition font-bold" title="رفع صورة شعار من جهازك مباشرة">
+                               <i class="fas fa-upload ml-1"></i>رفع صورة
+                            </button>
+                            <button type="button" onclick="clearLogoInput('right')" class="text-[11px] text-slate-400 hover:text-[#EF4444] transition font-semibold" title="مسح الرابط أو الصورة">
+                               <i class="fas fa-times-circle"></i> مسح
+                            </button>
+                         </div>
                       </div>
-                      <input type="url" id="set-logo-right" dir="ltr" class="input text-left" placeholder="https://example.com/logo-right.png" oninput="updateLogoPreview('right')">
+                      <input type="text" id="set-logo-right" dir="ltr" class="input text-left" placeholder="رابط صورة مباشر أو رابط Google Drive أو ارفع صورة..." oninput="onLogoTextInput('right')">
+                      <div id="preview-logo-right-status" class="hidden text-[11px] mt-1.5 leading-snug"></div>
                       <div class="mt-2.5 flex items-center gap-3">
                          <div id="preview-logo-right-box" class="w-16 h-12 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center p-1 overflow-hidden flex-shrink-0">
-                            <img id="preview-logo-right-img" alt="معاينة اللوجو الأيمن" class="hidden max-h-10 max-w-full object-contain">
-                            <span id="preview-logo-right-empty" class="text-[10px] text-slate-400">معاينة</span>
+                            <img id="preview-logo-right-img" referrerpolicy="no-referrer" alt="معاينة اللوجو الأيمن" class="hidden max-h-10 max-w-full object-contain">
+                            <span id="preview-logo-right-empty" class="text-[10px] text-slate-400 text-center leading-tight">معاينة</span>
                          </div>
-                         <p class="text-[11px] text-slate-500 leading-relaxed">يظهر على <strong>الجهة اليمنى</strong> من الشريط العلوي وفي ترويسة الطباعة لهذا المركز.</p>
+                         <p class="text-[11px] text-slate-500 leading-relaxed">يظهر على <strong>الجهة اليمنى</strong> من الشريط العلوي وفي ترويسة الطباعة. يدعم الروابط المباشرة وروابط Google Drive (مشاركة عامة) أو الرفع من الجهاز.</p>
                       </div>
                    </div>
 
                    <!-- Left Logo -->
                    <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5">
-                      <div class="flex items-center justify-between mb-1.5">
+                      <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
                          <label class="label !mb-0" for="set-logo-left">رابط اللوجو الأيسر (يسار الـ Header)</label>
-                         <button type="button" onclick="clearLogoInput('left')" class="text-[11px] text-slate-400 hover:text-[#EF4444] transition font-semibold" title="مسح الرابط">
-                            <i class="fas fa-times-circle"></i> مسح
-                         </button>
+                         <div class="flex items-center gap-2">
+                            <input type="file" id="upload-logo-left" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="handleLogoFileSelected('left', this)">
+                            <button type="button" onclick="triggerLogoFileUpload('left')" class="text-[11px] bg-teal-50 text-[#0F766E] hover:bg-teal-100 border border-teal-200 px-2 py-0.5 rounded-lg transition font-bold" title="رفع صورة شعار من جهازك مباشرة">
+                               <i class="fas fa-upload ml-1"></i>رفع صورة
+                            </button>
+                            <button type="button" onclick="clearLogoInput('left')" class="text-[11px] text-slate-400 hover:text-[#EF4444] transition font-semibold" title="مسح الرابط أو الصورة">
+                               <i class="fas fa-times-circle"></i> مسح
+                            </button>
+                         </div>
                       </div>
-                      <input type="url" id="set-logo-left" dir="ltr" class="input text-left" placeholder="https://example.com/logo-left.png" oninput="updateLogoPreview('left')">
+                      <input type="text" id="set-logo-left" dir="ltr" class="input text-left" placeholder="رابط صورة مباشر أو رابط Google Drive أو ارفع صورة..." oninput="onLogoTextInput('left')">
+                      <div id="preview-logo-left-status" class="hidden text-[11px] mt-1.5 leading-snug"></div>
                       <div class="mt-2.5 flex items-center gap-3">
                          <div id="preview-logo-left-box" class="w-16 h-12 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center p-1 overflow-hidden flex-shrink-0">
-                            <img id="preview-logo-left-img" alt="معاينة اللوجو الأيسر" class="hidden max-h-10 max-w-full object-contain">
-                            <span id="preview-logo-left-empty" class="text-[10px] text-slate-400">معاينة</span>
+                            <img id="preview-logo-left-img" referrerpolicy="no-referrer" alt="معاينة اللوجو الأيسر" class="hidden max-h-10 max-w-full object-contain">
+                            <span id="preview-logo-left-empty" class="text-[10px] text-slate-400 text-center leading-tight">معاينة</span>
                          </div>
-                         <p class="text-[11px] text-slate-500 leading-relaxed">يظهر على <strong>الجهة اليسرى</strong> من الشريط العلوي وفي ترويسة الطباعة لهذا المركز.</p>
+                         <p class="text-[11px] text-slate-500 leading-relaxed">يظهر على <strong>الجهة اليسرى</strong> من الشريط العلوي وفي ترويسة الطباعة. يدعم الروابط المباشرة وروابط Google Drive (مشاركة عامة) أو الرفع من الجهاز.</p>
                       </div>
                    </div>
                 </div>
@@ -2309,7 +2330,7 @@
                       <td colspan="6" class="bg-white">
                         <div class="border-b-2 border-gray-800 pb-4 mb-6 print-header flex items-center justify-between gap-4">
                            <div class="w-20 flex items-center justify-start">
-                              <img id="print-logo-right" alt="الشعار الأيمن" class="center-custom-logo hidden max-h-14 max-w-[80px] object-contain">
+                              <img id="print-logo-right" referrerpolicy="no-referrer" alt="الشعار الأيمن" class="center-custom-logo hidden max-h-14 max-w-[80px] object-contain">
                            </div>
                            <div class="flex-1 text-center">
                               <h1 id="indiv-hospital-name" class="text-xl font-bold text-gray-900">مستشفى المنيا الجامعي للعيون</h1>
@@ -2317,7 +2338,7 @@
                               <p id="indiv-print-title" class="font-bold text-indigo-800 mt-1"></p>
                            </div>
                            <div class="w-20 flex items-center justify-end">
-                              <img id="print-logo-left" alt="الشعار الأيسر" class="center-custom-logo hidden max-h-14 max-w-[80px] object-contain">
+                              <img id="print-logo-left" referrerpolicy="no-referrer" alt="الشعار الأيسر" class="center-custom-logo hidden max-h-14 max-w-[80px] object-contain">
                            </div>
                         </div>
                       </td>
@@ -2708,15 +2729,130 @@
        }
     }
 
+    const logoUploadedData = { right: '', left: '' };
+    let logoLoadSeq = 0;
+
+    function extractGoogleDriveFileId(urlStr) {
+       try {
+          const parsed = new URL(urlStr);
+          const host = parsed.hostname.toLowerCase();
+          if (host === 'drive.google.com' || host === 'docs.google.com') {
+             const mFile = parsed.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/);
+             if (mFile) return mFile[1];
+             const mD = parsed.pathname.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+             if (mD) return mD[1];
+             const idParam = parsed.searchParams.get('id');
+             if (idParam && /^[a-zA-Z0-9_-]{10,}$/.test(idParam)) return idParam;
+          } else if (host.endsWith('.googleusercontent.com')) {
+             const mD = parsed.pathname.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+             if (mD) return mD[1];
+          }
+       } catch (e) {}
+       return '';
+    }
+
     function sanitizeClientLogoUrl(raw) {
        const trimmed = String(raw || '').trim();
        if (!trimmed) return '';
+       if (trimmed.toLowerCase().startsWith('data:image/')) {
+          const compact = trimmed.replace(/\s+/g, '');
+          if (compact.length <= 280000 && /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(compact)) {
+             return compact;
+          }
+          return '';
+       }
        if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
        try {
           const parsed = new URL(trimmed);
-          if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return trimmed;
+          if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+             const driveId = extractGoogleDriveFileId(trimmed);
+             if (driveId) {
+                return `https://drive.google.com/thumbnail?id=${driveId}&sz=w1000`;
+             }
+             if (parsed.hostname.toLowerCase() === 'www.dropbox.com' || parsed.hostname.toLowerCase() === 'dropbox.com') {
+                parsed.hostname = 'dl.dropboxusercontent.com';
+                parsed.searchParams.delete('dl');
+                parsed.searchParams.set('raw', '1');
+                return parsed.toString();
+             }
+             return trimmed;
+          }
        } catch (e) {}
        return '';
+    }
+
+    function getLogoCandidateUrls(raw) {
+       const trimmed = String(raw || '').trim();
+       const safeUrl = sanitizeClientLogoUrl(trimmed);
+       if (!safeUrl) return [];
+       if (safeUrl.startsWith('data:image/') || safeUrl.startsWith('/')) return [safeUrl];
+
+       const driveId = extractGoogleDriveFileId(trimmed) || extractGoogleDriveFileId(safeUrl);
+       if (driveId) {
+          return [
+             `https://drive.google.com/thumbnail?id=${driveId}&sz=w1000`,
+             `https://lh3.googleusercontent.com/d/${driveId}=w1000`,
+             `https://drive.google.com/uc?export=view&id=${driveId}`
+          ];
+       }
+       return [safeUrl];
+    }
+
+    function loadLogoImgWithFallback(imgEl, rawUrl, onSuccess, onFail) {
+       if (!imgEl) return;
+       const candidates = getLogoCandidateUrls(rawUrl);
+       const token = String(++logoLoadSeq);
+       imgEl.dataset.loadToken = token;
+       imgEl.referrerPolicy = 'no-referrer';
+
+       if (candidates.length === 0) {
+          imgEl.onload = null;
+          imgEl.onerror = null;
+          imgEl.removeAttribute('src');
+          if (typeof onFail === 'function') onFail();
+          return;
+       }
+
+       let idx = 0;
+       const tryNext = () => {
+          if (imgEl.dataset.loadToken !== token) return;
+          if (idx >= candidates.length) {
+             if (typeof onFail === 'function') onFail();
+             return;
+          }
+          const url = candidates[idx++];
+          imgEl.onload = () => {
+             if (imgEl.dataset.loadToken !== token) return;
+             if (typeof onSuccess === 'function') onSuccess(url);
+          };
+          imgEl.onerror = () => {
+             if (imgEl.dataset.loadToken !== token) return;
+             tryNext();
+          };
+          imgEl.src = url;
+       };
+       tryNext();
+    }
+
+    function handleFallbackLogoImgError(imgEl) {
+       if (!imgEl) return;
+       const list = (imgEl.getAttribute('data-fallbacks') || '').split('|').filter(Boolean);
+       if (list.length > 0) {
+          const next = list.shift();
+          imgEl.setAttribute('data-fallbacks', list.join('|'));
+          imgEl.src = next;
+       } else {
+          imgEl.onerror = null;
+          imgEl.style.display = 'none';
+       }
+    }
+
+    function buildPrintableLogoImgHtml(rawUrl, altText, className) {
+       const candidates = getLogoCandidateUrls(rawUrl);
+       if (candidates.length === 0) return '';
+       const primary = candidates[0];
+       const fallbacks = candidates.slice(1).join('|');
+       return `<img src="${escapeHtml(primary)}" referrerpolicy="no-referrer" ${fallbacks ? `data-fallbacks="${escapeHtml(fallbacks)}"` : ''} onerror="handleFallbackLogoImgError(this)" alt="${escapeHtml(altText)}" class="${className}">`;
     }
 
     function handleHeaderLogoError(side) {
@@ -2731,23 +2867,29 @@
     }
 
     function updateHeaderLogos(rightRaw, leftRaw) {
-       const rightUrl = sanitizeClientLogoUrl(rightRaw);
-       const leftUrl = sanitizeClientLogoUrl(leftRaw);
+       const rightCandidates = getLogoCandidateUrls(rightRaw);
+       const leftCandidates = getLogoCandidateUrls(leftRaw);
 
        const rImg = el('header-logo-right');
        const pRImg = el('print-logo-right');
-       if (rightUrl && rImg) {
-          rImg.onerror = () => handleHeaderLogoError('right');
-          rImg.src = rightUrl;
-          show('header-logo-right-wrap');
-          hide('header-default-logo');
-          if (pRImg) {
-             pRImg.onerror = () => pRImg.classList.add('hidden');
-             pRImg.src = rightUrl;
-             pRImg.classList.remove('hidden');
-          }
+       if (rightCandidates.length > 0 && rImg) {
+          loadLogoImgWithFallback(
+             rImg,
+             rightRaw,
+             (loadedUrl) => {
+                show('header-logo-right-wrap');
+                hide('header-default-logo');
+                if (pRImg) {
+                   pRImg.referrerPolicy = 'no-referrer';
+                   pRImg.onerror = () => pRImg.classList.add('hidden');
+                   pRImg.src = loadedUrl;
+                   pRImg.classList.remove('hidden');
+                }
+             },
+             () => handleHeaderLogoError('right')
+          );
        } else {
-          if (rImg) { rImg.onerror = null; rImg.removeAttribute('src'); }
+          if (rImg) { rImg.onload = null; rImg.onerror = null; rImg.removeAttribute('src'); }
           hide('header-logo-right-wrap');
           show('header-default-logo');
           if (pRImg) { pRImg.onerror = null; pRImg.removeAttribute('src'); pRImg.classList.add('hidden'); }
@@ -2755,50 +2897,184 @@
 
        const lImg = el('header-logo-left');
        const pLImg = el('print-logo-left');
-       if (leftUrl && lImg) {
-          lImg.onerror = () => handleHeaderLogoError('left');
-          lImg.src = leftUrl;
-          show('header-logo-left-wrap');
-          if (pLImg) {
-             pLImg.onerror = () => pLImg.classList.add('hidden');
-             pLImg.src = leftUrl;
-             pLImg.classList.remove('hidden');
-          }
+       if (leftCandidates.length > 0 && lImg) {
+          loadLogoImgWithFallback(
+             lImg,
+             leftRaw,
+             (loadedUrl) => {
+                show('header-logo-left-wrap');
+                if (pLImg) {
+                   pLImg.referrerPolicy = 'no-referrer';
+                   pLImg.onerror = () => pLImg.classList.add('hidden');
+                   pLImg.src = loadedUrl;
+                   pLImg.classList.remove('hidden');
+                }
+             },
+             () => handleHeaderLogoError('left')
+          );
        } else {
-          if (lImg) { lImg.onerror = null; lImg.removeAttribute('src'); }
+          if (lImg) { lImg.onload = null; lImg.onerror = null; lImg.removeAttribute('src'); }
           hide('header-logo-left-wrap');
           if (pLImg) { pLImg.onerror = null; pLImg.removeAttribute('src'); pLImg.classList.add('hidden'); }
        }
+    }
+
+    function getEffectiveLogoValue(side) {
+       if (logoUploadedData[side]) return logoUploadedData[side];
+       const inputEl = el(side === 'right' ? 'set-logo-right' : 'set-logo-left');
+       return inputEl ? inputEl.value.trim() : '';
+    }
+
+    function onLogoTextInput(side) {
+       logoUploadedData[side] = '';
+       updateLogoPreview(side);
+    }
+
+    function setLogoFieldFromConfig(side, savedValue) {
+       const inputEl = el(side === 'right' ? 'set-logo-right' : 'set-logo-left');
+       if (!inputEl) return;
+       const val = String(savedValue || '').trim();
+       if (val.toLowerCase().startsWith('data:image/')) {
+          logoUploadedData[side] = val;
+          inputEl.value = 'صورة مرفوعة من الجهاز (محفوظة)';
+       } else {
+          logoUploadedData[side] = '';
+          inputEl.value = val;
+       }
+       updateLogoPreview(side);
+    }
+
+    function triggerLogoFileUpload(side) {
+       const fileEl = el(side === 'right' ? 'upload-logo-right' : 'upload-logo-left');
+       if (fileEl) {
+          fileEl.value = '';
+          fileEl.click();
+       }
+    }
+
+    function handleLogoFileSelected(side, fileInput) {
+       const file = fileInput && fileInput.files && fileInput.files[0];
+       if (!file) return;
+       if (!file.type || !file.type.startsWith('image/')) {
+          showToast('يرجى اختيار ملف صورة صالح (PNG, JPG, WebP).', 'warning');
+          return;
+       }
+       const reader = new FileReader();
+       reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+             try {
+                const maxW = 400;
+                const maxH = 200;
+                let w = img.naturalWidth || img.width;
+                let h = img.naturalHeight || img.height;
+                const scale = Math.min(1, maxW / w, maxH / h);
+                w = Math.max(1, Math.round(w * scale));
+                h = Math.max(1, Math.round(h * scale));
+
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+
+                let dataUrl = canvas.toDataURL('image/png');
+                if (dataUrl.length > 180000) {
+                   dataUrl = canvas.toDataURL('image/webp', 0.86);
+                }
+                if (dataUrl.length > 240000) {
+                   ctx.fillStyle = '#ffffff';
+                   ctx.fillRect(0, 0, w, h);
+                   ctx.drawImage(img, 0, 0, w, h);
+                   dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                }
+
+                logoUploadedData[side] = dataUrl;
+                const inputEl = el(side === 'right' ? 'set-logo-right' : 'set-logo-left');
+                if (inputEl) inputEl.value = `صورة مرفوعة (${file.name})`;
+                updateLogoPreview(side);
+                showToast('تم تجهيز صورة الشعار — اضغط «حفظ إعدادات المركز» لحفظها.', 'success');
+             } catch (err) {
+                showToast('تعذر معالجة الصورة المختارة.', 'error');
+             }
+          };
+          img.onerror = () => showToast('تعذر قراءة ملف الصورة.', 'error');
+          img.src = reader.result;
+       };
+       reader.onerror = () => showToast('تعذر قراءة الملف من الجهاز.', 'error');
+       reader.readAsDataURL(file);
     }
 
     function updateLogoPreview(side) {
        const inputEl = el(side === 'right' ? 'set-logo-right' : 'set-logo-left');
        const imgEl = el(side === 'right' ? 'preview-logo-right-img' : 'preview-logo-left-img');
        const emptyEl = el(side === 'right' ? 'preview-logo-right-empty' : 'preview-logo-left-empty');
+       const statusEl = el(side === 'right' ? 'preview-logo-right-status' : 'preview-logo-left-status');
        if (!inputEl || !imgEl || !emptyEl) return;
 
-       const safeUrl = sanitizeClientLogoUrl(inputEl.value);
+       const rawVal = getEffectiveLogoValue(side);
+       const isUploaded = Boolean(logoUploadedData[side]);
+       const isDrive = !isUploaded && Boolean(extractGoogleDriveFileId(rawVal));
+       const safeUrl = sanitizeClientLogoUrl(rawVal);
+
+       if (statusEl) {
+          statusEl.className = 'hidden text-[11px] mt-1.5 leading-snug';
+          statusEl.textContent = '';
+       }
+
        if (safeUrl) {
-          imgEl.onload = () => {
-             imgEl.classList.remove('hidden');
-             emptyEl.classList.add('hidden');
-          };
-          imgEl.onerror = () => {
-             imgEl.classList.add('hidden');
-             emptyEl.textContent = 'رابط غير صالح';
-             emptyEl.classList.remove('hidden');
-          };
-          imgEl.src = safeUrl;
+          imgEl.classList.add('hidden');
+          emptyEl.textContent = 'جاري التحميل...';
+          emptyEl.classList.remove('hidden');
+
+          loadLogoImgWithFallback(
+             imgEl,
+             rawVal,
+             () => {
+                imgEl.classList.remove('hidden');
+                emptyEl.classList.add('hidden');
+                if (statusEl) {
+                   if (isUploaded) {
+                      statusEl.className = 'text-[11px] mt-1.5 leading-snug text-emerald-700 font-semibold';
+                      statusEl.textContent = '✓ صورة مرفوعة جاهزة للعرض والطباعة (اضغط حفظ إعدادات المركز)';
+                   } else if (isDrive) {
+                      statusEl.className = 'text-[11px] mt-1.5 leading-snug text-emerald-700 font-semibold';
+                      statusEl.textContent = '✓ تم تحويل رابط Google Drive تلقائياً للعرض المباشر';
+                   }
+                }
+             },
+             () => {
+                imgEl.classList.add('hidden');
+                emptyEl.textContent = 'تعذر التحميل';
+                emptyEl.classList.remove('hidden');
+                if (statusEl) {
+                   statusEl.className = 'text-[11px] mt-1.5 leading-snug text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5';
+                   statusEl.textContent = isDrive
+                      ? 'تعذر فتح الصورة من Google Drive — تأكد من ضبط المشاركة على «أي شخص لديه الرابط (مشاهد)»، أو استخدم زر «رفع صورة» بالأعلى.'
+                      : 'تعذر تحميل الصورة من هذا الرابط — تأكد أنه رابط صورة مباشر أو استخدم زر «رفع صورة» من جهازك.';
+                }
+             }
+          );
        } else {
+          imgEl.onload = null;
+          imgEl.onerror = null;
           imgEl.removeAttribute('src');
           imgEl.classList.add('hidden');
-          emptyEl.textContent = 'معاينة';
+          emptyEl.textContent = rawVal ? 'رابط غير صالح' : 'معاينة';
           emptyEl.classList.remove('hidden');
+          if (rawVal && statusEl) {
+             statusEl.className = 'text-[11px] mt-1.5 leading-snug text-rose-700';
+             statusEl.textContent = 'يرجى إدخال رابط يبدأ بـ https:// أو استخدام زر «رفع صورة».';
+          }
        }
     }
 
     function clearLogoInput(side) {
+       logoUploadedData[side] = '';
        const inputEl = el(side === 'right' ? 'set-logo-right' : 'set-logo-left');
+       const fileEl = el(side === 'right' ? 'upload-logo-right' : 'upload-logo-left');
+       if (fileEl) fileEl.value = '';
        if (inputEl) {
           inputEl.value = '';
           updateLogoPreview(side);
@@ -5340,7 +5616,7 @@
              <td class="p-3 border border-[#E2E8F0] text-center whitespace-nowrap">
                 <div class="flex items-center justify-center gap-1.5">
                    <span class="${comp.scoreClass} text-sm">${row.score}%</span>
-                   <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${comp.badgeClass}">${comp.label}</span>
+                   <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${comp.badgeClass} no-print">${comp.label}</span>
                 </div>
                 ${pointsText ? `<div class="text-[11px] text-slate-500 tabular-nums mt-0.5">${pointsText}</div>` : ''}
              </td>
@@ -5529,47 +5805,56 @@
           }
           const comp = getCompetencyMeta(ass.score);
 
-          // Group items by procedure
+          // Group items by procedure so identical procedures merge into a single rowspan cell
           const procGroups = new Map();
           (ass.items || []).forEach(it => {
-             const p = it.procedure || 'عام';
+             const p = String(it.procedure ?? '').trim() || 'عام';
              if (!procGroups.has(p)) procGroups.set(p, []);
              procGroups.get(p).push(it);
           });
 
           let rowsHtml = '';
           procGroups.forEach((items, procName) => {
-             items.forEach((it) => {
+             const groupCount = items.length;
+             items.forEach((it, itemIdx) => {
                 const parsed = parseAnswerPointsClient(it.answer);
                 const scoreDisp = parsed.isNumeric ? `${parsed.val} / 3` : escapeHtml(it.answer || '---');
                 const noteText = (it.note && String(it.note).trim()) ? escapeHtml(String(it.note).trim()) : '---';
-                const showProcHeader = procName && procName !== 'عام' && procName !== it.question;
+                const questionText = (it.question && String(it.question).trim()) ? escapeHtml(String(it.question).trim()) : '---';
+                const procCell = itemIdx === 0
+                   ? `<td rowspan="${groupCount}" class="border border-slate-500 p-2 text-center align-middle font-extrabold text-[#0F766E] bg-slate-50/90 leading-snug">${escapeHtml(procName)}</td>`
+                   : '';
                 rowsHtml += `
                    <tr>
-                      <td class="border border-slate-500 p-2 text-right align-top">
-                         ${showProcHeader ? `<div class="text-[10px] font-bold text-[#0F766E] mb-0.5">${escapeHtml(procName)}</div>` : ''}
-                         <div class="text-slate-900 font-semibold leading-relaxed">${escapeHtml(it.question || procName || '---')}</div>
-                      </td>
-                      <td class="border border-slate-500 p-2 text-right align-top text-slate-800 leading-relaxed">${noteText}</td>
-                      <td class="border border-slate-500 p-2 text-center align-middle font-bold tabular-nums w-28 whitespace-nowrap">${scoreDisp}</td>
+                      ${procCell}
+                      <td class="border border-slate-500 p-2 text-right align-middle text-slate-900 font-semibold leading-relaxed">${questionText}</td>
+                      <td class="border border-slate-500 p-2 text-right align-middle text-slate-800 leading-relaxed">${noteText}</td>
+                      <td class="border border-slate-500 p-2 text-center align-middle font-bold tabular-nums whitespace-nowrap">${scoreDisp}</td>
                    </tr>
                 `;
              });
           });
+          if (!rowsHtml) {
+             rowsHtml = `
+                <tr>
+                   <td colspan="4" class="border border-slate-500 p-4 text-center text-slate-500">لا توجد بنود تقييم مسجلة</td>
+                </tr>
+             `;
+          }
 
           return `
              <div class="${cardWrapperClass}" dir="rtl">
                 <!-- Top Center Header with Right & Left Custom Logos -->
                 <div class="print-header border-b-2 border-slate-800 pb-3 mb-4 flex items-center justify-between gap-4">
                    <div class="w-24 flex items-center justify-start">
-                      ${rightLogo ? `<img src="${escapeHtml(rightLogo)}" alt="الشعار الأيمن" class="center-custom-logo max-h-16 max-w-[90px] object-contain">` : ''}
+                      ${buildPrintableLogoImgHtml(config.logo_right_url, 'الشعار الأيمن', 'center-custom-logo max-h-16 max-w-[90px] object-contain')}
                    </div>
                    <div class="flex-1 text-center">
                       <h1 class="text-lg font-black text-slate-900">${hospitalName}</h1>
                       <p class="text-xs text-slate-600 font-semibold mt-0.5">Competency Assessment - تقييمات الكفاءة</p>
                    </div>
                    <div class="w-24 flex items-center justify-end">
-                      ${leftLogo ? `<img src="${escapeHtml(leftLogo)}" alt="الشعار الأيسر" class="center-custom-logo max-h-16 max-w-[90px] object-contain">` : ''}
+                      ${buildPrintableLogoImgHtml(config.logo_left_url, 'الشعار الأيسر', 'center-custom-logo max-h-16 max-w-[90px] object-contain')}
                    </div>
                 </div>
 
@@ -5597,13 +5882,14 @@
                    </div>
                 </div>
 
-                <!-- 2. جدول الملاحظات: الإجراء | الملاحظات | درجة التقييم -->
+                <!-- 2. جدول الملاحظات: الإجراء (مدمج) | بند التقييم | الملاحظات | درجة التقييم -->
                 <table class="indiv-print-table w-full text-right border-collapse mb-4 text-xs">
                    <thead>
                       <tr class="bg-slate-100 text-slate-900">
-                         <th class="w-[46%] text-right border border-slate-500 p-2 font-bold">الإجراء</th>
-                         <th class="w-[38%] text-right border border-slate-500 p-2 font-bold">الملاحظات</th>
-                         <th class="w-[16%] text-center border border-slate-500 p-2 font-bold">درجة التقييم</th>
+                         <th class="w-[20%] text-center border border-slate-500 p-2 font-bold">الإجراء</th>
+                         <th class="w-[42%] text-right border border-slate-500 p-2 font-bold">بند التقييم</th>
+                         <th class="w-[24%] text-right border border-slate-500 p-2 font-bold">الملاحظات</th>
+                         <th class="w-[14%] text-center border border-slate-500 p-2 font-bold whitespace-nowrap">درجة التقييم</th>
                       </tr>
                    </thead>
                    <tbody>
@@ -5617,7 +5903,7 @@
                       <div class="grid grid-cols-2 divide-x divide-x-reverse divide-slate-300 border-b border-slate-300 bg-slate-50">
                          <div class="px-3 py-2.5 flex items-center justify-between gap-2">
                             <span class="font-bold text-slate-700">النتيجة النهائية:</span>
-                            <strong class="text-slate-950 font-black tabular-nums">${ass.earnedPoints} / ${ass.maxPoints} نقطة (${comp.label})</strong>
+                            <strong class="text-slate-950 font-black tabular-nums">${ass.earnedPoints} / ${ass.maxPoints} نقطة</strong>
                          </div>
                          <div class="px-3 py-2.5 flex items-center justify-between gap-2">
                             <span class="font-bold text-slate-700">النسبة:</span>
@@ -6490,14 +6776,8 @@
 
     function renderSettingsPage() {
        el('set-hospital-name').value = config.hospital_name || (activeCenter ? activeCenter.name : '');
-       if (el('set-logo-right')) {
-          el('set-logo-right').value = config.logo_right_url || '';
-          updateLogoPreview('right');
-       }
-       if (el('set-logo-left')) {
-          el('set-logo-left').value = config.logo_left_url || '';
-          updateLogoPreview('left');
-       }
+       setLogoFieldFromConfig('right', config.logo_right_url || '');
+       setLogoFieldFromConfig('left', config.logo_left_url || '');
        el('set-insp').value = (config.inspectors||[]).join('\n');
        updateCenterNameBindings(config.hospital_name || (activeCenter ? activeCenter.name : ''));
 
@@ -7306,24 +7586,26 @@
        });
 
        const newHospitalName = String(el('set-hospital-name').value || '').trim() || activeCenter.name;
-       const rawLogoRight = el('set-logo-right') ? el('set-logo-right').value.trim() : '';
-       const rawLogoLeft = el('set-logo-left') ? el('set-logo-left').value.trim() : '';
+       const rawLogoRight = getEffectiveLogoValue('right');
+       const rawLogoLeft = getEffectiveLogoValue('left');
+       const normalizedLogoRight = rawLogoRight ? sanitizeClientLogoUrl(rawLogoRight) : '';
+       const normalizedLogoLeft = rawLogoLeft ? sanitizeClientLogoUrl(rawLogoLeft) : '';
 
-       if (rawLogoRight && !sanitizeClientLogoUrl(rawLogoRight)) {
-          showToast('رابط اللوجو الأيمن غير صالح. يرجى إدخال رابط يبدأ بـ https:// أو http://', 'warning');
+       if (rawLogoRight && !normalizedLogoRight) {
+          showToast('رابط اللوجو الأيمن غير صالح. يرجى إدخال رابط يبدأ بـ https:// أو رفع صورة من جهازك.', 'warning');
           el('set-logo-right').focus();
           return;
        }
-       if (rawLogoLeft && !sanitizeClientLogoUrl(rawLogoLeft)) {
-          showToast('رابط اللوجو الأيسر غير صالح. يرجى إدخال رابط يبدأ بـ https:// أو http://', 'warning');
+       if (rawLogoLeft && !normalizedLogoLeft) {
+          showToast('رابط اللوجو الأيسر غير صالح. يرجى إدخال رابط يبدأ بـ https:// أو رفع صورة من جهازك.', 'warning');
           el('set-logo-left').focus();
           return;
        }
 
        const newConf = {
           hospital_name: newHospitalName,
-          logo_right_url: rawLogoRight,
-          logo_left_url: rawLogoLeft,
+          logo_right_url: normalizedLogoRight,
+          logo_left_url: normalizedLogoLeft,
           inspectors: el('set-insp').value.split('\n').filter(x=>x.trim()),
           departments: [],
           categories: [],

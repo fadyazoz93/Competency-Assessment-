@@ -55,9 +55,43 @@ const ALLOWED_SETTING_KEYS = [
   "indicator_targets",
 ] as const;
 
+function extractGoogleDriveFileIdServer(urlStr: string): string {
+  try {
+    const parsed = new URL(urlStr);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "drive.google.com" || host === "docs.google.com") {
+      const mFile = parsed.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/);
+      if (mFile) return mFile[1];
+      const mD = parsed.pathname.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+      if (mD) return mD[1];
+      const idParam = parsed.searchParams.get("id");
+      if (idParam && /^[a-zA-Z0-9_-]{10,}$/.test(idParam)) return idParam;
+    } else if (host.endsWith(".googleusercontent.com")) {
+      const mD = parsed.pathname.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+      if (mD) return mD[1];
+    }
+  } catch {
+    // ignore
+  }
+  return "";
+}
+
 function sanitizeLogoUrl(raw: any): string {
   const trimmed = String(raw ?? "").trim();
   if (!trimmed) return "";
+
+  // Allow safe raster image data URLs (PNG/JPEG/WebP/GIF only; never SVG for XSS safety)
+  if (trimmed.toLowerCase().startsWith("data:image/")) {
+    const compact = trimmed.replace(/\s+/g, "");
+    if (compact.length > 280_000) {
+      throw new Error("حجم صورة اللوجو كبير جداً. يرجى اختيار صورة أصغر.");
+    }
+    if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(compact)) {
+      return compact;
+    }
+    throw new Error("صيغة صورة اللوجو غير مدعومة. الصيغ المسموحة: PNG, JPG, WebP, GIF.");
+  }
+
   if (trimmed.length > 2048) {
     throw new Error("رابط اللوجو طويل جداً (الحد الأقصى 2048 حرفاً).");
   }
@@ -67,12 +101,24 @@ function sanitizeLogoUrl(raw: any): string {
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      // Automatically convert Google Drive share links into direct embeddable image URLs
+      const driveId = extractGoogleDriveFileIdServer(trimmed);
+      if (driveId) {
+        return `https://drive.google.com/thumbnail?id=${driveId}&sz=w1000`;
+      }
+      // Automatically convert Dropbox share links into direct raw image URLs
+      if (parsed.hostname.toLowerCase() === "www.dropbox.com" || parsed.hostname.toLowerCase() === "dropbox.com") {
+        parsed.hostname = "dl.dropboxusercontent.com";
+        parsed.searchParams.delete("dl");
+        parsed.searchParams.set("raw", "1");
+        return parsed.toString();
+      }
       return trimmed;
     }
   } catch {
     // invalid URL
   }
-  throw new Error("رابط اللوجو غير صالح. يرجى إدخال رابط صورة يبدأ بـ https:// أو http://");
+  throw new Error("رابط اللوجو غير صالح. يرجى إدخال رابط صورة يبدأ بـ https:// أو http:// أو رفع صورة من جهازك.");
 }
 
 // Helper to create default settings map for a center
