@@ -2097,8 +2097,8 @@ export default async function handler(req: any, res: any) {
       case "deleteProcedureFromIndicator": {
         const center = await requireValidCenter(reqCenterId);
         const [indicatorRaw, procedureRaw] = args;
-        const indicator = String(indicatorRaw || "").trim();
-        const procedure = String(procedureRaw || "").trim();
+        const indicator = String(indicatorRaw ?? "").trim();
+        const procedure = String(procedureRaw ?? "").trim();
 
         if (!indicator || !procedure) {
           result = { success: false, error: "المؤشر أو الإجراء غير محدد" };
@@ -2111,10 +2111,11 @@ export default async function handler(req: any, res: any) {
         const remainingIndicators: any[] = [];
 
         for (const item of rawIndicators) {
-          const itemInd = String(item.indicator || "").trim();
-          const itemProc = String(item.procedure || "عام").trim();
+          const itemInd = String(item?.indicator ?? "").trim() || "غير محدد";
+          const itemProc = String(item?.procedure ?? "").trim() || "عام";
           if (itemInd === indicator && itemProc === procedure) {
-            if (item.question) questionsToDelete.push(String(item.question).trim());
+            const qTrim = String(item?.question ?? "").trim();
+            if (qTrim) questionsToDelete.push(qTrim);
           } else {
             remainingIndicators.push(item);
           }
@@ -2157,9 +2158,9 @@ export default async function handler(req: any, res: any) {
       case "renameProcedure": {
         const center = await requireValidCenter(reqCenterId);
         const [indicatorRaw, oldProcRaw, newProcRaw, updateHistorical] = args;
-        const indicator = String(indicatorRaw || "").trim();
-        const oldProc = String(oldProcRaw || "").trim();
-        const newProc = String(newProcRaw || "").trim();
+        const indicator = String(indicatorRaw ?? "").trim();
+        const oldProc = String(oldProcRaw ?? "").trim();
+        const newProc = String(newProcRaw ?? "").trim();
 
         if (!indicator || !oldProc || !newProc) {
           result = { success: false, error: "المؤشر أو اسم الإجراء غير صالح" };
@@ -2171,13 +2172,11 @@ export default async function handler(req: any, res: any) {
         let modified = false;
 
         indicators = indicators.map((item: any) => {
-          if (
-            item &&
-            String(item.indicator || "").trim() === indicator &&
-            String(item.procedure || "عام").trim() === oldProc
-          ) {
+          const itemInd = String(item?.indicator ?? "").trim() || "غير محدد";
+          const itemProc = String(item?.procedure ?? "").trim() || "عام";
+          if (item && itemInd === indicator && itemProc === oldProc) {
             modified = true;
-            return { ...item, procedure: newProc };
+            return { ...item, indicator: itemInd, procedure: newProc };
           }
           return item;
         });
@@ -2217,13 +2216,13 @@ export default async function handler(req: any, res: any) {
 
         if (typeof newItemOrInd === "object" && newItemOrInd !== null) {
           indicator = String(newItemOrInd.indicator || "").trim();
-          procedure = String(newItemOrInd.procedure || "عام").trim();
+          procedure = String(newItemOrInd.procedure || "").trim() || "عام";
           question = String(newItemOrInd.question || "").trim();
           note = String(newItemOrInd.note || "").trim();
           addToExistingReports = secondArg !== false;
         } else {
           indicator = String(newItemOrInd || "").trim();
-          procedure = String(secondArg || "عام").trim();
+          procedure = String(secondArg || "").trim() || "عام";
           question = String(thirdArg || "").trim();
           note = String(fourthArg || "").trim();
           addToExistingReports = fifthArg !== false;
@@ -2234,15 +2233,13 @@ export default async function handler(req: any, res: any) {
           break;
         }
 
-        if (!procedure) procedure = "عام";
-
         const settings = await getCenterSettingsInternal(center.id, center.name);
         const indicators = [...(settings.indicators || [])];
         const exists = indicators.some(
           (i: any) =>
-            String(i.indicator || "").trim() === indicator &&
-            String(i.procedure || "عام").trim() === procedure &&
-            String(i.question || "").trim() === question
+            (String(i?.indicator ?? "").trim() || "غير محدد") === indicator &&
+            (String(i?.procedure ?? "").trim() || "عام") === procedure &&
+            String(i?.question ?? "").trim() === question
         );
 
         if (!exists) {
@@ -2274,31 +2271,39 @@ export default async function handler(req: any, res: any) {
 
       case "deleteQuestionFromIndicator": {
         const center = await requireValidCenter(reqCenterId);
-        const [indicatorRaw, questionRaw] = args;
-        const indicator = String(indicatorRaw || "").trim();
-        const question = String(questionRaw || "").trim();
+        const [indicatorRaw, questionRaw, procedureRaw] = args;
+        const indicator = String(indicatorRaw ?? "").trim();
+        const question = String(questionRaw ?? "").trim();
+        const procedure = procedureRaw !== undefined ? String(procedureRaw ?? "").trim() || "عام" : null;
 
-        if (!indicator || !question) {
-          result = { success: false, error: "المؤشر أو السؤال غير محدد" };
+        if (!indicator) {
+          result = { success: false, error: "المؤشر غير محدد" };
           break;
         }
 
-        const cleanStr = (s: string) => String(s || "").replace(/[\r\n\t]/g, "").trim();
+        const cleanStr = (s: any) => String(s ?? "").replace(/[\r\n\t]/g, "").trim();
         const targetInd = cleanStr(indicator);
         const targetQ = cleanStr(question);
+        const targetProc = procedure !== null ? cleanStr(procedure) || "عام" : null;
 
         const settings = await getCenterSettingsInternal(center.id, center.name);
         const indicators = (settings.indicators || []).filter((i: any) => {
-          const itemInd = cleanStr(i.indicator);
-          const itemQ = cleanStr(i.question);
-          return !(itemInd === targetInd && itemQ === targetQ);
+          const itemInd = cleanStr(i?.indicator) || "غير محدد";
+          const itemQ = cleanStr(i?.question);
+          const itemProc = cleanStr(i?.procedure) || "عام";
+          if (itemInd !== targetInd || itemQ !== targetQ) return true;
+          if (targetQ === "" && targetProc !== null && itemProc !== targetProc) return true;
+          return false;
         });
         await db.execute({
           sql: "INSERT OR REPLACE INTO center_settings (center_id, key, value) VALUES (?, ?, ?)",
           args: [center.id, "indicators", JSON.stringify(indicators)],
         });
 
-        const deletedRows = await removeQuestionFromExistingSessions(center.id, indicator, question);
+        let deletedRows = 0;
+        if (targetQ) {
+          deletedRows = await removeQuestionFromExistingSessions(center.id, indicator, question);
+        }
 
         updateCachedSettingsInMemory(center.id, { indicators });
         invalidateKpiDataCaches(center.id, indicator);
@@ -2315,8 +2320,8 @@ export default async function handler(req: any, res: any) {
       case "renameIndicator": {
         const center = await requireValidCenter(reqCenterId);
         const [oldNameRaw, newNameRaw, updateHistorical] = args;
-        const oldName = String(oldNameRaw || "").trim();
-        const newName = String(newNameRaw || "").trim();
+        const oldName = String(oldNameRaw ?? "").trim();
+        const newName = String(newNameRaw ?? "").trim();
 
         if (!oldName || !newName) {
           result = { success: false, error: "اسم المؤشر غير صالح" };
@@ -2328,7 +2333,8 @@ export default async function handler(req: any, res: any) {
         let modified = false;
 
         indicators = indicators.map((item: any) => {
-          if (item && String(item.indicator || "").trim() === oldName) {
+          const itemInd = String(item?.indicator ?? "").trim() || "غير محدد";
+          if (item && itemInd === oldName) {
             modified = true;
             return { ...item, indicator: newName };
           }
