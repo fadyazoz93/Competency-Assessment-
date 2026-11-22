@@ -2268,10 +2268,13 @@
           </div>
           
           <!-- Filters -->
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 mb-4 no-print">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 mb-3 no-print">
              <div>
-                <label class="label">الشهر</label>
-                <input type="month" id="indiv-month" class="input tabular-nums" onchange="indivMonthTouchedByUser = true; filterIndividuals()">
+                <div class="flex items-center justify-between">
+                   <label class="label">الشهر (الكل افتراضياً)</label>
+                   <button type="button" id="indiv-clear-month-btn" onclick="el('indiv-month').value=''; filterIndividuals();" class="hidden text-[11px] font-bold text-[#0284C7] hover:underline mb-1">كل الشهور</button>
+                </div>
+                <input type="month" id="indiv-month" class="input tabular-nums" onchange="filterIndividuals()">
              </div>
              <div>
                 <label class="label">المؤشر</label>
@@ -2282,10 +2285,16 @@
              <div class="md:col-span-2">
                 <label class="label">بحث بالاسم / الوظيفة</label>
                 <div class="relative">
-                   <input type="text" id="indiv-search" class="pill-search w-full py-2 pr-9 pl-4 text-sm text-slate-800 placeholder-slate-400" placeholder="اكتب الاسم أو الوظيفة للبحث..." onkeyup="filterIndividuals()">
+                   <input type="text" id="indiv-search" class="pill-search w-full py-2 pr-9 pl-4 text-sm text-slate-800 placeholder-slate-400" placeholder="اكتب الاسم أو الوظيفة للبحث..." oninput="filterIndividuals()">
                    <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
                 </div>
              </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4 text-xs text-slate-500 no-print">
+             <span id="indiv-count-summary" class="font-semibold text-slate-600"></span>
+             <button type="button" id="indiv-reset-filters-btn" onclick="resetIndividualFilters()" class="hidden text-xs font-bold text-[#0D9488] hover:text-[#0F766E] bg-[#0D9488]/10 hover:bg-[#0D9488]/15 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                <i class="fas fa-times-circle"></i> عرض جميع التقييمات (مسح الفلاتر)
+             </button>
           </div>
 
           <!-- Multi-Select Action Bar -->
@@ -2659,7 +2668,7 @@
        if (typeof clientReportsSummaryCache !== 'undefined') clientReportsSummaryCache.clear();
 
        // Reset dropdowns and inputs so previous center selections never linger
-       ['inspector', 'indicator', 'indiv-indicator'].forEach(id => {
+       ['inspector', 'indicator', 'indiv-indicator', 'indiv-month', 'indiv-search'].forEach(id => {
           const s = el(id);
           if (s) s.value = '';
        });
@@ -5557,17 +5566,15 @@
        };
     }
 
-    let indivMonthTouchedByUser = false;
+    function resetIndividualFilters() {
+       if (el('indiv-month')) el('indiv-month').value = '';
+       if (el('indiv-indicator')) el('indiv-indicator').value = '';
+       if (el('indiv-search')) el('indiv-search').value = '';
+       filterIndividuals();
+    }
 
     function loadIndividuals(silent = false, onComplete) {
        if (!silent) loading(true);
-       
-       const today = new Date();
-       const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
-       const monthEl = el('indiv-month');
-       if (monthEl && !monthEl.value && !indivMonthTouchedByUser) {
-          monthEl.value = currentMonth;
-       }
 
         google.script.run.withSuccessHandler(data => {
           allIndividualsData = data || [];
@@ -5575,18 +5582,13 @@
           selectedIndividualKeys.forEach(k => {
              if (!validKeys.has(k)) selectedIndividualKeys.delete(k);
           });
-
-          if (monthEl && monthEl.value && !indivMonthTouchedByUser && allIndividualsData.length > 0) {
-             const [y, m] = monthEl.value.split('-');
-             const hasInMonth = allIndividualsData.some(row => row.year == y && row.month == m);
-             if (!hasInMonth) {
-                monthEl.value = '';
-             }
-          }
           
           const indSelect = el('indiv-indicator');
           const curSelect = indSelect.value;
-          const uniqueInds = [...new Set((config.indicators||[]).map(i => i.indicator).filter(Boolean))];
+          const uniqueInds = [...new Set([
+             ...(config.indicators || []).map(i => i.indicator).filter(Boolean),
+             ...allIndividualsData.map(r => r.indicator).filter(Boolean)
+          ])];
           indSelect.innerHTML = '<option value="">جميع المؤشرات</option>' + 
              uniqueInds.map(ind => `<option value="${escapeHtml(ind)}">${escapeHtml(ind)}</option>`).join('');
           indSelect.value = curSelect;
@@ -5671,9 +5673,21 @@
        const mVal = el('indiv-month').value;
        const iVal = el('indiv-indicator').value;
        const sVal = el('indiv-search').value.toLowerCase().trim();
+       const hasAnyFilter = Boolean(mVal || iVal || sVal);
+
+       const clearMonthBtn = el('indiv-clear-month-btn');
+       if (clearMonthBtn) {
+          if (mVal) clearMonthBtn.classList.remove('hidden');
+          else clearMonthBtn.classList.add('hidden');
+       }
+       const resetBtn = el('indiv-reset-filters-btn');
+       if (resetBtn) {
+          if (hasAnyFilter) resetBtn.classList.remove('hidden');
+          else resetBtn.classList.add('hidden');
+       }
        
        if(el('indiv-print-title')) {
-           el('indiv-print-title').innerText = `تقرير شهر: ${mVal || 'الكل'}${iVal ? ' - مؤشر: ' + iVal : ''}`;
+           el('indiv-print-title').innerText = `${mVal ? 'تقرير شهر: ' + mVal : 'جميع التقييمات'}${iVal ? ' - مؤشر: ' + iVal : ''}`;
        }
        
        let filtered = allIndividualsData;
@@ -5693,6 +5707,17 @@
        }
 
        filteredIndividualsData = filtered;
+
+       const countSummary = el('indiv-count-summary');
+       if (countSummary) {
+          if (allIndividualsData.length === 0) {
+             countSummary.innerText = 'إجمالي التقييمات المسجلة: 0';
+          } else if (hasAnyFilter) {
+             countSummary.innerText = `عرض ${filtered.length} من أصل ${allIndividualsData.length} تقييم (مُفلتر)`;
+          } else {
+             countSummary.innerText = `عرض جميع التقييمات (${allIndividualsData.length})`;
+          }
+       }
        
        const tbody = el('indiv-tbody');
        tbody.innerHTML = '';
@@ -5703,8 +5728,9 @@
        }
        
        filtered.forEach((row, idx) => {
-          const dt = new Date(row.date);
-          const dateStr = isNaN(dt.getTime()) ? escapeHtml(row.date || '---') : dt.toLocaleDateString('ar-EG');
+          const rawDate = String(row.date || '').trim();
+          const dt = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? new Date(rawDate + 'T00:00:00') : new Date(rawDate);
+          const dateStr = isNaN(dt.getTime()) ? escapeHtml(rawDate || '---') : dt.toLocaleDateString('ar-EG');
 
           let reevalStr = '---';
           if (row.reevaluationDate) {

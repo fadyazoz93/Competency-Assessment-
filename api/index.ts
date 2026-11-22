@@ -2570,8 +2570,8 @@ export default async function handler(req: any, res: any) {
                   FROM kpis_data
                   WHERE center_id = ?
                     AND ((Target_Name IS NOT NULL AND TRIM(Target_Name) != '') OR (Target_Job_ID IS NOT NULL AND TRIM(Target_Job_ID) != ''))
-                  ORDER BY Year DESC, Month DESC, id DESC
-                  LIMIT 3000`,
+                  ORDER BY Date DESC, Year DESC, Month DESC, id DESC
+                  LIMIT 10000`,
             args: [center.id],
           }),
         ]);
