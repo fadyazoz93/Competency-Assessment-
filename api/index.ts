@@ -628,6 +628,125 @@ async function getQuestionToProcedureMap(centerId: string): Promise<Record<strin
   return map;
 }
 
+function normalizeCatalogText(val: any): string {
+  return String(val ?? "")
+    .replace(/[\u200B-\u200F\uFEFF]/g, "")
+    .replace(/[–—−‐‑]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+interface IndicatorCatalogEntry {
+  questionToProc: Map<string, string>;
+  savedProcedures: Set<string>;
+}
+
+async function getIndicatorCatalog(centerId: string): Promise<Map<string, IndicatorCatalogEntry>> {
+  const settings = await getCenterSettingsInternal(centerId);
+  const catalog = new Map<string, IndicatorCatalogEntry>();
+  const inds = Array.isArray(settings.indicators) ? settings.indicators : [];
+
+  for (const item of inds) {
+    if (!item) continue;
+    const indNorm = normalizeCatalogText(item.indicator);
+    const qNorm = normalizeCatalogText(item.question);
+    const proc = String(item.procedure ?? "").trim() || "عام";
+    if (!indNorm || !qNorm) continue;
+
+    let entry = catalog.get(indNorm);
+    if (!entry) {
+      entry = { questionToProc: new Map(), savedProcedures: new Set() };
+      catalog.set(indNorm, entry);
+    }
+    if (!entry.questionToProc.has(qNorm) || entry.questionToProc.get(qNorm) === "عام") {
+      entry.questionToProc.set(qNorm, proc);
+    }
+    entry.savedProcedures.add(normalizeCatalogText(proc));
+  }
+  return catalog;
+}
+
+function sanitizeSessionRowsForDisplay(
+  rows: any[],
+  catalog: Map<string, IndicatorCatalogEntry>,
+  procMap: Record<string, string>
+): { cleanRows: Array<{ row: any; resolvedProcedure: string }>; orphanIds: number[] } {
+  if (!rows || rows.length === 0) return { cleanRows: [], orphanIds: [] };
+
+  const firstIndNorm = normalizeCatalogText(rows[0].Indicator);
+  const indEntry = catalog.get(firstIndNorm);
+
+  type RankedRow = {
+    row: any;
+    qNorm: string;
+    resolvedProcedure: string;
+    inSavedCatalog: boolean;
+    procMatchesSaved: boolean;
+  };
+
+  const ranked: RankedRow[] = rows.map((r) => {
+    const indRaw = String(r.Indicator || "").trim();
+    const qRaw = String(r.Question || "").trim();
+    const qNorm = normalizeCatalogText(qRaw);
+    const storedProc = String(r.Procedure || "").trim();
+    const storedProcNorm = normalizeCatalogText(storedProc);
+    const savedProc = indEntry ? indEntry.questionToProc.get(qNorm) : undefined;
+    const inSavedCatalog = Boolean(savedProc);
+
+    let resolvedProcedure = storedProc || procMap[`${indRaw}___${qRaw}`] || "عام";
+    if (savedProc) {
+      if (!storedProc || storedProc === "عام" || !indEntry!.savedProcedures.has(storedProcNorm)) {
+        resolvedProcedure = savedProc;
+      }
+    }
+
+    const procMatchesSaved = Boolean(
+      savedProc && normalizeCatalogText(storedProc) === normalizeCatalogText(savedProc)
+    );
+
+    return { row: r, qNorm, resolvedProcedure, inSavedCatalog, procMatchesSaved };
+  });
+
+  const hasAnySavedMatch = Boolean(indEntry && ranked.some((x) => x.inSavedCatalog));
+  const keptCandidates: RankedRow[] = [];
+  const orphanIds: number[] = [];
+
+  for (const item of ranked) {
+    if (hasAnySavedMatch && !item.inSavedCatalog) {
+      if (item.row.id !== undefined && item.row.id !== null) orphanIds.push(Number(item.row.id));
+      continue;
+    }
+    keptCandidates.push(item);
+  }
+
+  const byQuestion = new Map<string, RankedRow>();
+  for (const item of keptCandidates) {
+    const key = item.qNorm || `__id_${item.row.id}`;
+    const existing = byQuestion.get(key);
+    if (!existing) {
+      byQuestion.set(key, item);
+      continue;
+    }
+    const scoreOf = (x: RankedRow) =>
+      (x.procMatchesSaved ? 4 : 0) +
+      (x.row.Procedure && String(x.row.Procedure).trim() !== "عام" ? 2 : 0) +
+      (x.row.Answer !== null && x.row.Answer !== undefined && String(x.row.Answer).trim() !== "" ? 1 : 0);
+
+    if (scoreOf(item) > scoreOf(existing)) {
+      if (existing.row.id !== undefined && existing.row.id !== null) orphanIds.push(Number(existing.row.id));
+      byQuestion.set(key, item);
+    } else {
+      if (item.row.id !== undefined && item.row.id !== null) orphanIds.push(Number(item.row.id));
+    }
+  }
+
+  const cleanRows = Array.from(byQuestion.values())
+    .sort((a, b) => Number(a.row.id || 0) - Number(b.row.id || 0))
+    .map((x) => ({ row: x.row, resolvedProcedure: x.resolvedProcedure }));
+
+  return { cleanRows, orphanIds };
+}
+
 // مزامنة سؤال جديد مع الجلسات المسجلة لنفس المركز فقط
 async function syncQuestionToExistingSessions(
   centerId: string,
@@ -1533,30 +1652,48 @@ export default async function handler(req: any, res: any) {
           await db.batch(stmts, "write");
         }
 
-        // المزامنة التلقائية مع نتائج نفس المركز فقط
+        // المزامنة التلقائية مع نتائج نفس المركز فقط (فقط للأسئلة المضافة أو المعدّلة فعلياً لتجنب تكرار البنود)
         if (Array.isArray(newIndicators)) {
-          if (Array.isArray(oldIndicators)) {
-            for (const oldItem of oldIndicators) {
-              const oldInd = String(oldItem.indicator || "").trim();
-              const oldQ = String(oldItem.question || "").trim();
-              if (!oldInd || !oldQ) continue;
-              const stillExists = newIndicators.some(
-                (newItem: any) =>
-                  String(newItem.indicator || "").trim() === oldInd &&
-                  String(newItem.question || "").trim() === oldQ
-              );
-              if (!stillExists) {
-                await removeQuestionFromExistingSessions(center.id, oldInd, oldQ);
-              }
+          const oldList = Array.isArray(oldIndicators) ? oldIndicators : [];
+          const oldKeyToProc = new Map<string, string>();
+          for (const oldItem of oldList) {
+            const oInd = normalizeCatalogText(oldItem?.indicator);
+            const oQ = normalizeCatalogText(oldItem?.question);
+            const oProc = String(oldItem?.procedure || "عام").trim() || "عام";
+            if (oInd && oQ) {
+              oldKeyToProc.set(`${oInd}___${oQ}`, oProc);
+            }
+          }
+
+          for (const oldItem of oldList) {
+            const oldInd = String(oldItem?.indicator || "").trim();
+            const oldQ = String(oldItem?.question || "").trim();
+            if (!oldInd || !oldQ) continue;
+            const oldKey = `${normalizeCatalogText(oldInd)}___${normalizeCatalogText(oldQ)}`;
+            const stillExists = newIndicators.some(
+              (newItem: any) =>
+                `${normalizeCatalogText(newItem?.indicator)}___${normalizeCatalogText(newItem?.question)}` === oldKey
+            );
+            if (!stillExists) {
+              await removeQuestionFromExistingSessions(center.id, oldInd, oldQ);
             }
           }
 
           for (const newItem of newIndicators) {
-            const newInd = String(newItem.indicator || "").trim();
-            const newProc = String(newItem.procedure || "عام").trim();
-            const newQ = String(newItem.question || "").trim();
+            const newInd = String(newItem?.indicator || "").trim();
+            const newProc = String(newItem?.procedure || "عام").trim() || "عام";
+            const newQ = String(newItem?.question || "").trim();
             if (!newInd || !newQ) continue;
-            await syncQuestionToExistingSessions(center.id, newInd, newProc, newQ);
+            const key = `${normalizeCatalogText(newInd)}___${normalizeCatalogText(newQ)}`;
+            if (!oldKeyToProc.has(key)) {
+              await syncQuestionToExistingSessions(center.id, newInd, newProc, newQ);
+            } else if (oldKeyToProc.get(key) !== newProc) {
+              await db.execute({
+                sql: `UPDATE kpis_data SET Procedure = ?
+                      WHERE center_id = ? AND (TRIM(Indicator) = ? OR Indicator = ?) AND (TRIM(Question) = ? OR Question = ?)`,
+                args: [newProc, center.id, newInd, newInd, newQ, newQ],
+              });
+            }
           }
         }
 
@@ -2425,100 +2562,99 @@ export default async function handler(req: any, res: any) {
 
       case "fetchIndividualAssessments": {
         const center = await requireValidCenter(reqCenterId);
-        const query = await db.execute({
-          sql: `SELECT id, Date, Month, Year, Inspector, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
-                FROM kpis_data
-                WHERE center_id = ?
-                  AND ((Target_Name IS NOT NULL AND TRIM(Target_Name) != '') OR (Target_Job_ID IS NOT NULL AND TRIM(Target_Job_ID) != ''))
-                ORDER BY Year DESC, Month DESC, id DESC
-                LIMIT 3000`,
-          args: [center.id],
-        });
+        const [catalog, procMap, query] = await Promise.all([
+          getIndicatorCatalog(center.id),
+          getQuestionToProcedureMap(center.id),
+          db.execute({
+            sql: `SELECT id, Date, Month, Year, Inspector, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
+                  FROM kpis_data
+                  WHERE center_id = ?
+                    AND ((Target_Name IS NOT NULL AND TRIM(Target_Name) != '') OR (Target_Job_ID IS NOT NULL AND TRIM(Target_Job_ID) != ''))
+                  ORDER BY Year DESC, Month DESC, id DESC
+                  LIMIT 3000`,
+            args: [center.id],
+          }),
+        ]);
         const data = query.rows;
 
-        const sessions: Record<string, any> = {};
-
+        const sessionGroups = new Map<string, any[]>();
         for (const r of data) {
           const name = r.Target_Name ? String(r.Target_Name).trim() : "";
           const jobId = r.Target_Job_ID ? String(r.Target_Job_ID).trim() : "";
-
           if (!name && !jobId) continue;
 
           const groupingKey = `${r.Date}_${r.Inspector}_${r.Session_Number}_${r.Indicator}_${name}_${jobId}`;
-
-          if (!sessions[groupingKey]) {
-            sessions[groupingKey] = {
-              sessionKey: groupingKey,
-              recordIds: [] as number[],
-              date: r.Date,
-              month: r.Month,
-              year: r.Year,
-              inspector: r.Inspector ? String(r.Inspector).trim() : "",
-              sessionNumber: Number(r.Session_Number || 1),
-              indicator: r.Indicator,
-              name,
-              jobId,
-              totalQuestions: 0,
-              yesCount: 0,
-              notes: [],
-              recommendations: r.Recommendations ? String(r.Recommendations).trim() : "",
-              reevaluationDate: r.Reevaluation_Date ? String(r.Reevaluation_Date).trim() : "",
-            };
-          } else {
-            if (!sessions[groupingKey].recommendations && r.Recommendations) {
-              sessions[groupingKey].recommendations = String(r.Recommendations).trim();
-            }
-            if (!sessions[groupingKey].reevaluationDate && r.Reevaluation_Date) {
-              sessions[groupingKey].reevaluationDate = String(r.Reevaluation_Date).trim();
-            }
-          }
-
-          if (r.id !== undefined && r.id !== null) {
-            sessions[groupingKey].recordIds.push(Number(r.id));
-          }
-
-          const qText = r.Question;
-          const parsed = parseAnswerPoints(r.Answer);
-          if (parsed.max > 0) {
-            sessions[groupingKey].totalQuestions += parsed.max;
-            sessions[groupingKey].yesCount += parsed.earned;
-          }
-
-          const note = r.Note ? String(r.Note).trim() : "";
-          if (parsed.isLow) {
-            if (parsed.numericVal !== null) {
-              sessions[groupingKey].notes.push(`${qText} (الدرجة: ${parsed.numericVal}/3${note ? " - " + note : ""})`);
-            } else {
-              sessions[groupingKey].notes.push(qText + (note ? " (" + note + ")" : ""));
-            }
-          }
+          if (!sessionGroups.has(groupingKey)) sessionGroups.set(groupingKey, []);
+          sessionGroups.get(groupingKey)!.push(r);
         }
 
-        result = Object.values(sessions).map((s) => {
-          const score = s.totalQuestions > 0 ? Math.round((s.yesCount / s.totalQuestions) * 100) : 0;
-          const formattedMonth = ("0" + s.month).slice(-2);
-          s.recordIds.sort((a: number, b: number) => a - b);
-          return {
-            sessionKey: s.sessionKey,
-            recordIds: s.recordIds,
-            date: s.date,
+        const sessionsList: any[] = [];
+        for (const [groupingKey, rawRows] of sessionGroups.entries()) {
+          const first = rawRows[0];
+          const name = first.Target_Name ? String(first.Target_Name).trim() : "";
+          const jobId = first.Target_Job_ID ? String(first.Target_Job_ID).trim() : "";
+          const { cleanRows } = sanitizeSessionRowsForDisplay(rawRows, catalog, procMap);
+
+          let recommendations = "";
+          let reevaluationDate = "";
+          for (const r of rawRows) {
+            if (!recommendations && r.Recommendations) recommendations = String(r.Recommendations).trim();
+            if (!reevaluationDate && r.Reevaluation_Date) reevaluationDate = String(r.Reevaluation_Date).trim();
+          }
+
+          let totalQuestions = 0;
+          let yesCount = 0;
+          const notes: string[] = [];
+
+          for (const { row: r } of cleanRows) {
+            const qText = r.Question;
+            const parsed = parseAnswerPoints(r.Answer);
+            if (parsed.max > 0) {
+              totalQuestions += parsed.max;
+              yesCount += parsed.earned;
+            }
+            const note = r.Note ? String(r.Note).trim() : "";
+            if (parsed.isLow) {
+              if (parsed.numericVal !== null) {
+                notes.push(`${qText} (الدرجة: ${parsed.numericVal}/3${note ? " - " + note : ""})`);
+              } else {
+                notes.push(qText + (note ? " (" + note + ")" : ""));
+              }
+            }
+          }
+
+          // Keep all raw session row IDs so delete/edit/print can also clean up any orphan duplicates
+          const allRecordIds = rawRows
+            .map((r) => Number(r.id))
+            .filter((n) => Number.isInteger(n) && n > 0)
+            .sort((a, b) => a - b);
+
+          const score = totalQuestions > 0 ? Math.round((yesCount / totalQuestions) * 100) : 0;
+          const formattedMonth = ("0" + first.Month).slice(-2);
+
+          sessionsList.push({
+            sessionKey: groupingKey,
+            recordIds: allRecordIds,
+            date: first.Date,
             month: formattedMonth,
-            year: s.year,
-            inspector: s.inspector,
-            sessionNumber: s.sessionNumber,
-            indicator: s.indicator,
-            name: s.name,
-            jobId: s.jobId,
-            yesCount: s.yesCount,
-            totalQuestions: s.totalQuestions,
-            earnedPoints: s.yesCount,
-            maxPoints: s.totalQuestions,
+            year: first.Year,
+            inspector: first.Inspector ? String(first.Inspector).trim() : "",
+            sessionNumber: Number(first.Session_Number || 1),
+            indicator: first.Indicator,
+            name,
+            jobId,
+            yesCount,
+            totalQuestions,
+            earnedPoints: yesCount,
+            maxPoints: totalQuestions,
             score,
-            notes: s.notes.join("<br>"),
-            recommendations: s.recommendations || "",
-            reevaluationDate: s.reevaluationDate || "",
-          };
-        });
+            notes: notes.join("<br>"),
+            recommendations,
+            reevaluationDate,
+          });
+        }
+
+        result = sessionsList;
         break;
       }
 
@@ -2533,30 +2669,36 @@ export default async function handler(req: any, res: any) {
         }
 
         const placeholders = recordIds.map(() => "?").join(",");
-        const procMap = await getQuestionToProcedureMap(center.id);
-        const query = await db.execute({
-          sql: `SELECT id, Date, Month, Year, Inspector, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
-                FROM kpis_data
-                WHERE center_id = ? AND id IN (${placeholders})
-                ORDER BY id ASC`,
-          args: [center.id, ...recordIds],
-        });
+        const [catalog, procMap, query] = await Promise.all([
+          getIndicatorCatalog(center.id),
+          getQuestionToProcedureMap(center.id),
+          db.execute({
+            sql: `SELECT id, Date, Month, Year, Inspector, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
+                  FROM kpis_data
+                  WHERE center_id = ? AND id IN (${placeholders})
+                  ORDER BY id ASC`,
+            args: [center.id, ...recordIds],
+          }),
+        ]);
 
         if (query.rows.length === 0) {
           throw new Error("لم يتم العثور على التقييم المحدد في هذا المركز.");
         }
 
-        const first = query.rows[0];
+        const { cleanRows, orphanIds } = sanitizeSessionRowsForDisplay(query.rows, catalog, procMap);
+        const first = cleanRows[0]?.row || query.rows[0];
         let recommendations = "";
         let reevaluationDate = "";
+        for (const r of query.rows) {
+          if (!recommendations && r.Recommendations) recommendations = String(r.Recommendations).trim();
+          if (!reevaluationDate && r.Reevaluation_Date) reevaluationDate = String(r.Reevaluation_Date).trim();
+        }
+
         let earnedPoints = 0;
         let maxPoints = 0;
 
-        const items = query.rows.map((r) => {
-          const ind = String(r.Indicator || "").trim();
+        const items = cleanRows.map(({ row: r, resolvedProcedure }) => {
           const q = String(r.Question || "").trim();
-          if (!recommendations && r.Recommendations) recommendations = String(r.Recommendations).trim();
-          if (!reevaluationDate && r.Reevaluation_Date) reevaluationDate = String(r.Reevaluation_Date).trim();
           const parsed = parseAnswerPoints(r.Answer);
           if (parsed.max > 0) {
             earnedPoints += parsed.earned;
@@ -2564,7 +2706,7 @@ export default async function handler(req: any, res: any) {
           }
           return {
             id: Number(r.id),
-            procedure: r.Procedure ? String(r.Procedure).trim() : (procMap[`${ind}___${q}`] || "عام"),
+            procedure: resolvedProcedure,
             question: q,
             answer: r.Answer !== null && r.Answer !== undefined ? String(r.Answer) : "0",
             note: r.Note ? String(r.Note) : "",
@@ -2572,7 +2714,8 @@ export default async function handler(req: any, res: any) {
         });
 
         result = {
-          recordIds: items.map((it) => it.id),
+          recordIds: query.rows.map((r) => Number(r.id)),
+          orphanRecordIds: orphanIds,
           date: String(first.Date || "").slice(0, 10),
           month: ("0" + first.Month).slice(-2),
           year: Number(first.Year),
@@ -2609,14 +2752,17 @@ export default async function handler(req: any, res: any) {
 
         const allIds: number[] = Array.from(new Set<number>(normalizedGroups.flat())).slice(0, 4000);
         const placeholders = allIds.map(() => "?").join(",");
-        const procMap = await getQuestionToProcedureMap(center.id);
-        const query = await db.execute({
-          sql: `SELECT id, Date, Month, Year, Inspector, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
-                FROM kpis_data
-                WHERE center_id = ? AND id IN (${placeholders})
-                ORDER BY id ASC`,
-          args: [center.id, ...allIds],
-        });
+        const [catalog, procMap, query] = await Promise.all([
+          getIndicatorCatalog(center.id),
+          getQuestionToProcedureMap(center.id),
+          db.execute({
+            sql: `SELECT id, Date, Month, Year, Inspector, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
+                  FROM kpis_data
+                  WHERE center_id = ? AND id IN (${placeholders})
+                  ORDER BY id ASC`,
+            args: [center.id, ...allIds],
+          }),
+        ]);
 
         const rowById = new Map<number, any>();
         for (const r of query.rows) {
@@ -2625,19 +2771,21 @@ export default async function handler(req: any, res: any) {
 
         const assessments: any[] = [];
         for (const grp of normalizedGroups) {
-          const rows = grp.map((id) => rowById.get(id)).filter(Boolean);
-          if (rows.length === 0) continue;
-          const first = rows[0];
+          const rawRows = grp.map((id) => rowById.get(id)).filter(Boolean);
+          if (rawRows.length === 0) continue;
+          const { cleanRows } = sanitizeSessionRowsForDisplay(rawRows, catalog, procMap);
+          const first = cleanRows[0]?.row || rawRows[0];
           let recommendations = "";
           let reevaluationDate = "";
+          for (const r of rawRows) {
+            if (!recommendations && r.Recommendations) recommendations = String(r.Recommendations).trim();
+            if (!reevaluationDate && r.Reevaluation_Date) reevaluationDate = String(r.Reevaluation_Date).trim();
+          }
           let earnedPoints = 0;
           let maxPoints = 0;
 
-          const items = rows.map((r: any) => {
-            const ind = String(r.Indicator || "").trim();
+          const items = cleanRows.map(({ row: r, resolvedProcedure }) => {
             const q = String(r.Question || "").trim();
-            if (!recommendations && r.Recommendations) recommendations = String(r.Recommendations).trim();
-            if (!reevaluationDate && r.Reevaluation_Date) reevaluationDate = String(r.Reevaluation_Date).trim();
             const parsed = parseAnswerPoints(r.Answer);
             if (parsed.max > 0) {
               earnedPoints += parsed.earned;
@@ -2645,7 +2793,7 @@ export default async function handler(req: any, res: any) {
             }
             return {
               id: Number(r.id),
-              procedure: r.Procedure ? String(r.Procedure).trim() : (procMap[`${ind}___${q}`] || "عام"),
+              procedure: resolvedProcedure,
               question: q,
               answer: r.Answer !== null && r.Answer !== undefined ? String(r.Answer) : "0",
               note: r.Note ? String(r.Note) : "",
@@ -2705,42 +2853,83 @@ export default async function handler(req: any, res: any) {
         const recommendations = String(payload.recommendations || "").trim();
         const reevaluationDate = String(payload.reevaluationDate || "").trim();
         const items = Array.isArray(payload.items) ? payload.items : [];
+        const deleteIdsRaw = [
+          ...(Array.isArray(payload.deletedItemIds) ? payload.deletedItemIds : []),
+          ...(Array.isArray(payload.orphanRecordIds) ? payload.orphanRecordIds : []),
+        ];
+        const deleteIdSet = new Set<number>(
+          deleteIdsRaw
+            .map((x: any) => Number(x))
+            .filter((n: number) => Number.isInteger(n) && n > 0 && allowedIdSet.has(n))
+        );
 
         const stmts: Array<{ sql: string; args: any[] }> = [];
         for (const item of items) {
           const itemId = Number(item && item.id);
-          if (!Number.isInteger(itemId) || !allowedIdSet.has(itemId)) continue;
+          if (!Number.isInteger(itemId) || !allowedIdSet.has(itemId) || deleteIdSet.has(itemId)) continue;
           const answerStr = item.answer !== undefined && item.answer !== null ? String(item.answer).trim() : "0";
           const noteStr = item.note ? String(item.note).trim() : "";
-          stmts.push({
-            sql: `UPDATE kpis_data
-                  SET Date = ?, Month = ?, Year = ?, Inspector = ?, Target_Name = ?, Target_Job_ID = ?,
-                      Recommendations = ?, Reevaluation_Date = ?, Answer = ?, Note = ?
-                  WHERE id = ? AND center_id = ?`,
-            args: [
-              dateStr,
-              month,
-              year,
-              inspector,
-              targetName,
-              targetJobId,
-              recommendations,
-              reevaluationDate,
-              answerStr,
-              noteStr,
-              itemId,
-              center.id,
-            ],
-          });
+          const procStr = item.procedure ? String(item.procedure).trim() : "";
+          if (procStr) {
+            stmts.push({
+              sql: `UPDATE kpis_data
+                    SET Date = ?, Month = ?, Year = ?, Inspector = ?, Target_Name = ?, Target_Job_ID = ?,
+                        Recommendations = ?, Reevaluation_Date = ?, Answer = ?, Note = ?, Procedure = ?
+                    WHERE id = ? AND center_id = ?`,
+              args: [
+                dateStr,
+                month,
+                year,
+                inspector,
+                targetName,
+                targetJobId,
+                recommendations,
+                reevaluationDate,
+                answerStr,
+                noteStr,
+                procStr,
+                itemId,
+                center.id,
+              ],
+            });
+          } else {
+            stmts.push({
+              sql: `UPDATE kpis_data
+                    SET Date = ?, Month = ?, Year = ?, Inspector = ?, Target_Name = ?, Target_Job_ID = ?,
+                        Recommendations = ?, Reevaluation_Date = ?, Answer = ?, Note = ?
+                    WHERE id = ? AND center_id = ?`,
+              args: [
+                dateStr,
+                month,
+                year,
+                inspector,
+                targetName,
+                targetJobId,
+                recommendations,
+                reevaluationDate,
+                answerStr,
+                noteStr,
+                itemId,
+                center.id,
+              ],
+            });
+          }
         }
 
         if (stmts.length === 0) {
           throw new Error("لا توجد بنود صالحة للتحديث.");
         }
 
+        for (const delId of deleteIdSet) {
+          stmts.push({
+            sql: "DELETE FROM kpis_data WHERE id = ? AND center_id = ?",
+            args: [delId, center.id],
+          });
+        }
+
         await db.batch(stmts, "write");
         invalidateKpiDataCaches(center.id);
-        result = { success: true, updatedCount: stmts.length };
+        result = { success: true, updatedCount: items.length, cleanedOrphans: deleteIdSet.size };
         break;
       }
 
@@ -2756,19 +2945,24 @@ export default async function handler(req: any, res: any) {
         }
 
         const placeholders = recordIds.map(() => "?").join(",");
-        const sourceQuery = await db.execute({
-          sql: `SELECT id, Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
-                FROM kpis_data
-                WHERE center_id = ? AND id IN (${placeholders})
-                ORDER BY id ASC`,
-          args: [center.id, ...recordIds],
-        });
+        const [catalog, procMap, sourceQuery] = await Promise.all([
+          getIndicatorCatalog(center.id),
+          getQuestionToProcedureMap(center.id),
+          db.execute({
+            sql: `SELECT id, Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID, Recommendations, Reevaluation_Date
+                  FROM kpis_data
+                  WHERE center_id = ? AND id IN (${placeholders})
+                  ORDER BY id ASC`,
+            args: [center.id, ...recordIds],
+          }),
+        ]);
 
         if (sourceQuery.rows.length === 0) {
           throw new Error("لم يتم العثور على التقييم المصدر في هذا المركز.");
         }
 
-        const first = sourceQuery.rows[0];
+        const { cleanRows } = sanitizeSessionRowsForDisplay(sourceQuery.rows, catalog, procMap);
+        const first = cleanRows[0]?.row || sourceQuery.rows[0];
         const targetName = String(payload.name !== undefined ? payload.name : first.Target_Name || "").trim();
         const targetJobId = String(payload.jobId !== undefined ? payload.jobId : first.Target_Job_ID || "").trim();
         if (!targetName || !targetJobId) {
@@ -2802,7 +2996,7 @@ export default async function handler(req: any, res: any) {
         const nextSessionNumber = Number(maxSessRes.rows[0]?.maxSession || 0) + 1;
         const timestampStr = new Date().toISOString();
 
-        const stmts = sourceQuery.rows.map((r) => ({
+        const stmts = cleanRows.map(({ row: r, resolvedProcedure }) => ({
           sql: `INSERT INTO kpis_data (
             center_id, Date, Month, Year, Inspector, Department, Category,
             Session_Number, Indicator, Procedure, Question, Answer, Note, Timestamp,
@@ -2818,7 +3012,7 @@ export default async function handler(req: any, res: any) {
             "",
             nextSessionNumber,
             indicatorName,
-            r.Procedure || "عام",
+            resolvedProcedure || "عام",
             r.Question || "",
             r.Answer !== null && r.Answer !== undefined ? String(r.Answer) : "0",
             r.Note || "",

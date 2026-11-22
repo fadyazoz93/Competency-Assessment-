@@ -3465,9 +3465,6 @@
                  </label>
                </div>
              </div>
-             <div class="pr-0 sm:pr-10">
-               <input type="text" id="note_${idx}" value="" class="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-xs text-slate-700 bg-[#F8FAFC] focus:bg-white focus:outline-none focus:border-[#0D9488] transition" placeholder="الملاحظة (اختياري)...">
-             </div>
           `;
           list.appendChild(div);
        });
@@ -3676,8 +3673,7 @@
           if(!checked) valid = false;
           else {
              const ans = checked.value;
-             const note = (document.getElementById(`note_${idx}`)?.value || '').trim();
-             data.answers.push({question: qText, answer: ans, note: note});
+             data.answers.push({question: qText, answer: ans, note: ''});
           }
        });
 
@@ -5819,7 +5815,6 @@
              items.forEach((it, itemIdx) => {
                 const parsed = parseAnswerPointsClient(it.answer);
                 const scoreDisp = parsed.isNumeric ? `${parsed.val} / 3` : escapeHtml(it.answer || '---');
-                const noteText = (it.note && String(it.note).trim()) ? escapeHtml(String(it.note).trim()) : '---';
                 const questionText = (it.question && String(it.question).trim()) ? escapeHtml(String(it.question).trim()) : '---';
                 const procCell = itemIdx === 0
                    ? `<td rowspan="${groupCount}" class="border border-slate-500 p-2 text-center align-middle font-extrabold text-[#0F766E] bg-slate-50/90 leading-snug">${escapeHtml(procName)}</td>`
@@ -5828,7 +5823,6 @@
                    <tr>
                       ${procCell}
                       <td class="border border-slate-500 p-2 text-right align-middle text-slate-900 font-semibold leading-relaxed">${questionText}</td>
-                      <td class="border border-slate-500 p-2 text-right align-middle text-slate-800 leading-relaxed">${noteText}</td>
                       <td class="border border-slate-500 p-2 text-center align-middle font-bold tabular-nums whitespace-nowrap">${scoreDisp}</td>
                    </tr>
                 `;
@@ -5837,7 +5831,7 @@
           if (!rowsHtml) {
              rowsHtml = `
                 <tr>
-                   <td colspan="4" class="border border-slate-500 p-4 text-center text-slate-500">لا توجد بنود تقييم مسجلة</td>
+                   <td colspan="3" class="border border-slate-500 p-4 text-center text-slate-500">لا توجد بنود تقييم مسجلة</td>
                 </tr>
              `;
           }
@@ -5882,13 +5876,12 @@
                    </div>
                 </div>
 
-                <!-- 2. جدول الملاحظات: الإجراء (مدمج) | بند التقييم | الملاحظات | درجة التقييم -->
+                <!-- 2. جدول بنود التقييم: الإجراء (مدمج) | بند التقييم | درجة التقييم -->
                 <table class="indiv-print-table w-full text-right border-collapse mb-4 text-xs">
                    <thead>
                       <tr class="bg-slate-100 text-slate-900">
                          <th class="w-[20%] text-center border border-slate-500 p-2 font-bold">الإجراء</th>
-                         <th class="w-[42%] text-right border border-slate-500 p-2 font-bold">بند التقييم</th>
-                         <th class="w-[24%] text-right border border-slate-500 p-2 font-bold">الملاحظات</th>
+                         <th class="w-[66%] text-right border border-slate-500 p-2 font-bold">بند التقييم</th>
                          <th class="w-[14%] text-center border border-slate-500 p-2 font-bold whitespace-nowrap">درجة التقييم</th>
                       </tr>
                    </thead>
@@ -6007,6 +6000,7 @@
           el('edit-indiv-items-count').innerText = `${items.length} بند`;
        }
 
+       const canDeleteItem = items.length > 1;
        container.innerHTML = items.map((it, i) => {
           const ansStr = String(it.answer ?? '0').trim();
           const isNumeric = ['0', '1', '2', '3'].includes(ansStr);
@@ -6040,12 +6034,38 @@
                             </label>
                          `;
                       }).join('')}
+                      ${canDeleteItem ? `
+                         <button type="button" onclick="removeEditIndividualItem(${i})" class="w-8 h-8 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center transition mr-1" title="حذف هذا البند من التقييم">
+                            <i class="fas fa-trash-alt text-[11px]"></i>
+                         </button>
+                      ` : ''}
                    </div>
                 </div>
-                <input type="text" id="edit-indiv-note-${i}" value="${escapeHtml(it.note || '')}" class="w-full border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-[#F8FAFC] focus:bg-white focus:outline-none focus:border-[#0D9488]" placeholder="ملاحظة البند (اختياري)...">
              </div>
           `;
        }).join('');
+    }
+
+    function removeEditIndividualItem(itemIdx) {
+       if (!currentEditingIndividual || !Array.isArray(currentEditingIndividual.items)) return;
+       if (currentEditingIndividual.items.length <= 1) {
+          showToast('لا يمكن حذف البند الأخير في التقييم.', 'warning');
+          return;
+       }
+       // Sync current radio selections before removing
+       currentEditingIndividual.items.forEach((it, i) => {
+          const checked = document.querySelector(`input[name="edit_indiv_q_${i}"]:checked`);
+          if (checked) it.answer = checked.value;
+       });
+       const removed = currentEditingIndividual.items.splice(itemIdx, 1)[0];
+       if (removed && removed.id) {
+          if (!Array.isArray(currentEditingIndividual.deletedItemIds)) {
+             currentEditingIndividual.deletedItemIds = [];
+          }
+          currentEditingIndividual.deletedItemIds.push(removed.id);
+       }
+       renderEditIndividualQuestions(currentEditingIndividual.items);
+       recalcEditIndividualScore();
     }
 
     function recalcEditIndividualScore() {
@@ -6055,6 +6075,7 @@
        currentEditingIndividual.items.forEach((it, i) => {
           const checked = document.querySelector(`input[name="edit_indiv_q_${i}"]:checked`);
           const val = checked ? checked.value : String(it.answer ?? '0');
+          if (checked) it.answer = checked.value;
           const parsed = parseAnswerPointsClient(val);
           if (parsed.max > 0) {
              earned += parsed.earned;
@@ -6099,11 +6120,11 @@
 
        const updatedItems = (currentEditingIndividual.items || []).map((it, i) => {
           const checked = document.querySelector(`input[name="edit_indiv_q_${i}"]:checked`);
-          const noteInput = el(`edit-indiv-note-${i}`);
           return {
              id: it.id,
+             procedure: it.procedure || '',
              answer: checked ? checked.value : String(it.answer ?? '0'),
-             note: noteInput ? noteInput.value.trim() : (it.note || '')
+             note: it.note || ''
           };
        });
 
@@ -6121,6 +6142,8 @@
           })
           .updateIndividualAssessment({
              recordIds: currentEditingIndividual.recordIds,
+             orphanRecordIds: currentEditingIndividual.orphanRecordIds || [],
+             deletedItemIds: currentEditingIndividual.deletedItemIds || [],
              name,
              jobId,
              date,
