@@ -637,6 +637,17 @@ function normalizeCatalogText(val: any): string {
     .trim();
 }
 
+function normalizeEmployeeMatchServer(val: any): string {
+  return String(val ?? "")
+    .replace(/[\u200B-\u200F\uFEFF]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 function sanitizeEmployeesList(raw: any): Array<{ name: string; job: string }> {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
@@ -1773,6 +1784,89 @@ export default async function handler(req: any, res: any) {
         });
         updateCachedSettingsInMemory(center.id, { employees: sanitized });
         result = { success: true, employees: sanitized };
+        break;
+      }
+
+      case "updateSavedEmployee": {
+        const center = await requireValidCenter(reqCenterId);
+        const payload = args[0] || {};
+        const oldName = String(payload.oldName ?? "").replace(/\s+/g, " ").trim();
+        const oldJob = String(payload.oldJob ?? "").replace(/\s+/g, " ").trim();
+        const newName = String(payload.newName ?? "").replace(/\s+/g, " ").trim();
+        const newJob = String(payload.newJob ?? "").replace(/\s+/g, " ").trim();
+        if (!newName) {
+          throw new Error("يرجى إدخال اسم العامل.");
+        }
+
+        const oldSettings = await getCenterSettingsInternal(center.id, center.name, true);
+        const prevEmployees: Array<{ name: string; job: string }> = Array.isArray(oldSettings.employees)
+          ? oldSettings.employees
+          : [];
+
+        const sanitized = sanitizeEmployeesList(payload.employees);
+        await db.execute({
+          sql: "INSERT OR REPLACE INTO center_settings (center_id, key, value) VALUES (?, ?, ?)",
+          args: [center.id, "employees", JSON.stringify(sanitized)],
+        });
+
+        let updatedRecordsCount = 0;
+        const oldNameNorm = normalizeEmployeeMatchServer(oldName);
+        const oldJobNorm = normalizeEmployeeMatchServer(oldJob);
+
+        if (oldNameNorm && (oldName !== newName || oldJob !== newJob)) {
+          const otherSameNameJobs = new Set<string>();
+          for (const emp of prevEmployees) {
+            const eNameNorm = normalizeEmployeeMatchServer(emp?.name);
+            const eJobNorm = normalizeEmployeeMatchServer(emp?.job);
+            if (eNameNorm === oldNameNorm && eJobNorm !== oldJobNorm) {
+              otherSameNameJobs.add(eJobNorm);
+            }
+          }
+
+          const existingTargets = await db.execute({
+            sql: `SELECT DISTINCT Target_Name, COALESCE(Target_Job_ID, '') AS Target_Job_ID
+                  FROM kpis_data
+                  WHERE center_id = ? AND Target_Name IS NOT NULL AND TRIM(Target_Name) != ''
+                  LIMIT 10000`,
+            args: [center.id],
+          });
+
+          const updateStmts: Array<{ sql: string; args: any[] }> = [];
+          for (const r of existingTargets.rows) {
+            const rawTargetName = String(r.Target_Name ?? "");
+            const rawTargetJob = String(r.Target_Job_ID ?? "");
+            const rNameNorm = normalizeEmployeeMatchServer(rawTargetName);
+            if (rNameNorm !== oldNameNorm) continue;
+
+            const rJobNorm = normalizeEmployeeMatchServer(rawTargetJob);
+            if (otherSameNameJobs.size > 0) {
+              if (rJobNorm !== oldJobNorm) continue;
+            }
+
+            updateStmts.push({
+              sql: `UPDATE kpis_data
+                    SET Target_Name = ?, Target_Job_ID = ?
+                    WHERE center_id = ? AND Target_Name = ? AND COALESCE(Target_Job_ID, '') = ?`,
+              args: [newName, newJob, center.id, rawTargetName, rawTargetJob],
+            });
+          }
+
+          if (updateStmts.length > 0) {
+            const batchResults = await db.batch(updateStmts, "write");
+            for (const br of batchResults) {
+              updatedRecordsCount += Number(br.rowsAffected || 0);
+            }
+          }
+        }
+
+        updateCachedSettingsInMemory(center.id, { employees: sanitized });
+        invalidateKpiDataCaches(center.id);
+
+        result = {
+          success: true,
+          employees: sanitized,
+          updatedRecordsCount,
+        };
         break;
       }
 

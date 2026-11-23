@@ -7579,6 +7579,7 @@
     }
 
     function saveInlineEmployeeEdit(idx) {
+       if (!activeCenter) return;
        const name = (el(`edit-emp-name-${idx}`)?.value || '').replace(/\s+/g, ' ').trim();
        const job = (el(`edit-emp-job-${idx}`)?.value || '').replace(/\s+/g, ' ').trim();
        if (!name) {
@@ -7586,9 +7587,77 @@
           return;
        }
        const current = Array.isArray(config.employees) ? [...config.employees] : [];
-       if (!current[idx]) return;
+       const oldEmp = current[idx];
+       if (!oldEmp) return;
+
+       const oldName = String(oldEmp.name || '').trim();
+       const oldJob = String(oldEmp.job || '').trim();
+       if (name === oldName && job === oldJob) {
+          cancelInlineEmployeeEdit();
+          return;
+       }
+
+       const targetKey = `${normalizeEmployeeMatchText(name)}___${normalizeEmployeeMatchText(job)}`;
+       const hasDuplicate = current.some((e, i) =>
+          i !== idx && `${normalizeEmployeeMatchText(e.name)}___${normalizeEmployeeMatchText(e.job)}` === targetKey
+       );
+       if (hasDuplicate) {
+          showToast('يوجد عامل آخر مسجل بالفعل بنفس الاسم والوظيفة.', 'warning');
+          return;
+       }
+
        current[idx] = { name, job };
-       saveEmployeesListToServer(current, 'تم تعديل بيانات العامل وحفظها بنجاح.');
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             config.employees = (res && Array.isArray(res.employees)) ? res.employees : current;
+             editingEmployeeIdx = -1;
+
+             // Invalidate all report & monthly staff caches so every view reflects the updated name/job
+             if (typeof evaluatedEmployeesByMonth !== 'undefined') evaluatedEmployeesByMonth.clear();
+             if (typeof rawReportsList !== 'undefined') rawReportsList = [];
+             if (typeof clientReportsSummaryCache !== 'undefined') clientReportsSummaryCache.clear();
+             if (typeof clientSessionCache !== 'undefined') clientSessionCache.clear();
+
+             // Update already-loaded individual assessments in memory immediately
+             if (Array.isArray(allIndividualsData) && allIndividualsData.length > 0) {
+                const oldNormName = normalizeEmployeeMatchText(oldName);
+                const oldNormJob = normalizeEmployeeMatchText(oldJob);
+                const otherSameName = current.some((e, i) =>
+                   i !== idx && normalizeEmployeeMatchText(e.name) === oldNormName && normalizeEmployeeMatchText(e.job) !== oldNormJob
+                );
+                allIndividualsData.forEach(row => {
+                   if (normalizeEmployeeMatchText(row.name) !== oldNormName) return;
+                   if (otherSameName && normalizeEmployeeMatchText(row.jobId) !== oldNormJob) return;
+                   row.name = name;
+                   row.jobId = job;
+                });
+                if (typeof filterIndividuals === 'function') filterIndividuals();
+             }
+
+             renderEmployeesSettingsList();
+             renderEntryEmployeeDropdown();
+             refreshEvaluatedEmployeesForEntry(true);
+
+             const updatedCount = Number(res && res.updatedRecordsCount || 0);
+             const msg = updatedCount > 0
+                ? `تم تعديل بيانات العامل وتحديث ${updatedCount} سجل في جميع التقارير والقوائم بنجاح.`
+                : 'تم تعديل بيانات العامل وحفظها بنجاح.';
+             showToast(msg, 'success');
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             showToast('تعذر تعديل بيانات العامل: ' + err, 'error');
+          })
+          .updateSavedEmployee({
+             oldName,
+             oldJob,
+             newName: name,
+             newJob: job,
+             employees: current
+          });
     }
 
     function deleteEmployeeAt(idx) {
