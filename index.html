@@ -2521,19 +2521,45 @@
           </div>
 
           <div class="p-5 overflow-y-auto flex-1 space-y-5">
+             <!-- Saved Staff Picker (hides already-evaluated employees for the selected month) -->
+             <div id="edit-indiv-staff-picker-wrap" class="hidden bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-3.5">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                   <label class="label !mb-0 flex items-center gap-1.5" for="edit-indiv-emp-select">
+                      <i class="fas fa-users text-[#0D9488]"></i>
+                      <span>اختيار من قائمة العاملين (المتبقين خلال الشهر)</span>
+                   </label>
+                   <span id="edit-indiv-staff-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#0D9488]/10 text-[#0F766E] tabular-nums"></span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                   <div class="relative">
+                      <input type="text" id="edit-indiv-emp-filter" class="input pr-8 text-xs" placeholder="بحث سريع بالاسم أو الوظيفة..." oninput="renderModalStaffPicker('edit')">
+                      <i class="fas fa-search absolute right-2.5 top-3 text-slate-400 text-[11px] pointer-events-none"></i>
+                   </div>
+                   <div class="sm:col-span-2">
+                      <select id="edit-indiv-emp-select" class="input text-sm font-semibold" onchange="onModalEmployeeSelected('edit')">
+                         <option value="">-- اختر فرداً من قائمة العاملين لتعبئة الاسم والوظيفة --</option>
+                      </select>
+                   </div>
+                </div>
+                <p id="edit-indiv-staff-all-done-msg" class="hidden mt-2 text-xs font-bold text-[#0F766E] bg-[#DCFCE7]/70 border border-emerald-200 px-3 py-2 rounded-xl flex items-center gap-2">
+                   <i class="fas fa-check-circle text-[#10B981]"></i>
+                   <span>تم تقييم جميع العاملين المسجلين في القائمة خلال هذا الشهر. يمكنك تغيير الشهر أو التعديل يدوياً أدناه.</span>
+                </p>
+             </div>
+
              <!-- Metadata Fields -->
              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                    <label class="label">الاسم <span class="text-[#EF4444]">*</span></label>
-                   <input type="text" id="edit-indiv-name" class="input" placeholder="الاسم الكامل" required>
+                   <input type="text" id="edit-indiv-name" class="input" placeholder="الاسم الكامل" oninput="onModalManualTargetInput('edit')" required>
                 </div>
                 <div>
                    <label class="label">الوظيفة <span class="text-[#EF4444]">*</span></label>
-                   <input type="text" id="edit-indiv-job" class="input" placeholder="المسمى الوظيفي" required>
+                   <input type="text" id="edit-indiv-job" class="input" placeholder="المسمى الوظيفي" oninput="onModalManualTargetInput('edit')" required>
                 </div>
                 <div>
                    <label class="label">التاريخ <span class="text-[#EF4444]">*</span></label>
-                   <input type="date" id="edit-indiv-date" class="input tabular-nums" required>
+                   <input type="date" id="edit-indiv-date" class="input tabular-nums" onchange="refreshModalStaffPicker('edit', true)" required>
                 </div>
                 <div>
                    <label class="label">المُقيّم</label>
@@ -2615,18 +2641,40 @@
              <p class="text-xs text-slate-600 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 leading-relaxed">
                 سيتم إنشاء نسخة جديدة ومستقلة من هذا التقييم بجميع درجات بنوده. يمكنك تعديل بيانات النسخة أدناه قبل الحفظ.
              </p>
+             <div id="dup-indiv-staff-picker-wrap" class="hidden bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                   <label class="label !mb-0 flex items-center gap-1.5" for="dup-indiv-emp-select">
+                      <i class="fas fa-users text-[#0D9488]"></i>
+                      <span>اختيار من قائمة العاملين (المتبقين خلال الشهر)</span>
+                   </label>
+                   <span id="dup-indiv-staff-status-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#0D9488]/10 text-[#0F766E] tabular-nums"></span>
+                </div>
+                <div class="space-y-2">
+                   <div class="relative">
+                      <input type="text" id="dup-indiv-emp-filter" class="input pr-8 text-xs" placeholder="بحث سريع بالاسم أو الوظيفة..." oninput="renderModalStaffPicker('dup')">
+                      <i class="fas fa-search absolute right-2.5 top-3 text-slate-400 text-[11px] pointer-events-none"></i>
+                   </div>
+                   <select id="dup-indiv-emp-select" class="input text-sm font-semibold" onchange="onModalEmployeeSelected('dup')">
+                      <option value="">-- اختر فرداً من قائمة العاملين لتعبئة الاسم والوظيفة --</option>
+                   </select>
+                </div>
+                <p id="dup-indiv-staff-all-done-msg" class="hidden mt-2 text-xs font-bold text-[#0F766E] bg-[#DCFCE7]/70 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                   <i class="fas fa-check-circle text-[#10B981]"></i>
+                   <span>تم تقييم جميع العاملين المسجلين خلال هذا الشهر.</span>
+                </p>
+             </div>
              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                    <label class="label">الاسم <span class="text-[#EF4444]">*</span></label>
-                   <input type="text" id="dup-indiv-name" class="input" required>
+                   <input type="text" id="dup-indiv-name" class="input" oninput="onModalManualTargetInput('dup')" required>
                 </div>
                 <div>
                    <label class="label">الوظيفة <span class="text-[#EF4444]">*</span></label>
-                   <input type="text" id="dup-indiv-job" class="input" required>
+                   <input type="text" id="dup-indiv-job" class="input" oninput="onModalManualTargetInput('dup')" required>
                 </div>
                 <div>
                    <label class="label">التاريخ <span class="text-[#EF4444]">*</span></label>
-                   <input type="date" id="dup-indiv-date" class="input tabular-nums" required>
+                   <input type="date" id="dup-indiv-date" class="input tabular-nums" onchange="refreshModalStaffPicker('dup', true)" required>
                 </div>
                 <div>
                    <label class="label">المُقيّم</label>
@@ -6431,7 +6479,10 @@
 
              renderEditIndividualQuestions(details.items || []);
              recalcEditIndividualScore();
+             if (el('edit-indiv-emp-filter')) el('edit-indiv-emp-filter').value = '';
+             if (el('edit-indiv-emp-select')) el('edit-indiv-emp-select').value = '';
              show('edit-indiv-modal');
+             refreshModalStaffPicker('edit', true);
           })
           .withFailureHandler(err => {
              loading(false);
@@ -6602,6 +6653,126 @@
           });
     }
 
+    // --- Modal Saved Staff Picker Helpers (Edit & Duplicate Individual Modals) ---
+    const modalStaffReqSeq = { edit: 0, dup: 0 };
+
+    function getModalStaffMonthKey(prefix) {
+       const dateVal = (el(`${prefix}-indiv-date`)?.value || '').trim();
+       if (/^\d{4}-\d{2}/.test(dateVal)) return dateVal.slice(0, 7);
+       const now = new Date();
+       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function renderModalStaffPicker(prefix) {
+       const wrap = el(`${prefix}-indiv-staff-picker-wrap`);
+       const select = el(`${prefix}-indiv-emp-select`);
+       const badge = el(`${prefix}-indiv-staff-status-badge`);
+       const allDoneMsg = el(`${prefix}-indiv-staff-all-done-msg`);
+       if (!wrap || !select) return;
+
+       const employees = Array.isArray(config.employees) ? config.employees : [];
+       if (employees.length === 0) {
+          wrap.classList.add('hidden');
+          return;
+       }
+       wrap.classList.remove('hidden');
+
+       const monthKey = getModalStaffMonthKey(prefix);
+       const evaluatedList = evaluatedEmployeesByMonth.get(monthKey) || [];
+       const nameFreq = new Map();
+       employees.forEach(emp => {
+          const k = normalizeEmployeeMatchText(emp.name);
+          if (k) nameFreq.set(k, (nameFreq.get(k) || 0) + 1);
+       });
+
+       const available = [];
+       employees.forEach((emp, idx) => {
+          if (!isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFreq)) {
+             available.push({ emp, idx });
+          }
+       });
+
+       const searchQuery = normalizeEmployeeMatchText(el(`${prefix}-indiv-emp-filter`)?.value || '');
+       const filteredAvailable = searchQuery
+          ? available.filter(({ emp }) =>
+               normalizeEmployeeMatchText(emp.name).includes(searchQuery) ||
+               normalizeEmployeeMatchText(emp.job).includes(searchQuery)
+            )
+          : available;
+
+       const prevVal = select.value;
+       const placeholder = available.length === 0
+          ? '-- لا يوجد عاملين متبقين لهذا الشهر --'
+          : (filteredAvailable.length === 0
+              ? '-- لا توجد نتائج مطابقة للبحث --'
+              : '-- اختر فرداً من قائمة العاملين لتعبئة الاسم والوظيفة --');
+
+       select.innerHTML = `<option value="">${placeholder}</option>` + filteredAvailable.map(({ emp, idx }) => {
+          const label = emp.job ? `${emp.name} — ${emp.job}` : emp.name;
+          return `<option value="${idx}">${escapeHtml(label)}</option>`;
+       }).join('');
+
+       if (prevVal !== '' && filteredAvailable.some(x => String(x.idx) === String(prevVal))) {
+          select.value = prevVal;
+       } else {
+          select.value = '';
+       }
+
+       if (badge) {
+          badge.innerText = `المتبقي لشهر ${monthKey}: ${available.length} من ${employees.length}`;
+       }
+       if (allDoneMsg) {
+          if (available.length === 0) allDoneMsg.classList.remove('hidden');
+          else allDoneMsg.classList.add('hidden');
+       }
+    }
+
+    function refreshModalStaffPicker(prefix, force = false) {
+       if (!activeCenter) {
+          renderModalStaffPicker(prefix);
+          return;
+       }
+       const monthKey = getModalStaffMonthKey(prefix);
+       if (!force && evaluatedEmployeesByMonth.has(monthKey)) {
+          renderModalStaffPicker(prefix);
+          return;
+       }
+       renderModalStaffPicker(prefix);
+       const seq = ++modalStaffReqSeq[prefix];
+       google.script.run
+          .withSuccessHandler(res => {
+             if (seq !== modalStaffReqSeq[prefix]) return;
+             const list = (res && Array.isArray(res.evaluated)) ? res.evaluated : [];
+             const resolvedKey = (res && res.monthKey) ? res.monthKey : monthKey;
+             evaluatedEmployeesByMonth.set(resolvedKey, list);
+             renderModalStaffPicker(prefix);
+          })
+          .withFailureHandler(() => {
+             renderModalStaffPicker(prefix);
+          })
+          .getEvaluatedEmployeesForMonth(monthKey);
+    }
+
+    function onModalEmployeeSelected(prefix) {
+       const select = el(`${prefix}-indiv-emp-select`);
+       if (!select || select.value === '') return;
+       const emp = (config.employees || [])[Number(select.value)];
+       if (!emp) return;
+       if (el(`${prefix}-indiv-name`)) el(`${prefix}-indiv-name`).value = emp.name || '';
+       if (el(`${prefix}-indiv-job`)) el(`${prefix}-indiv-job`).value = emp.job || '';
+    }
+
+    function onModalManualTargetInput(prefix) {
+       const select = el(`${prefix}-indiv-emp-select`);
+       if (!select || select.value === '') return;
+       const emp = (config.employees || [])[Number(select.value)];
+       const curName = (el(`${prefix}-indiv-name`)?.value || '').trim();
+       const curJob = (el(`${prefix}-indiv-job`)?.value || '').trim();
+       if (!emp || curName !== (emp.name || '') || curJob !== (emp.job || '')) {
+          select.value = '';
+       }
+    }
+
     // --- Duplicate Individual Assessment Modal ---
     function openDuplicateIndividualModal(idx) {
        const row = filteredIndividualsData[idx];
@@ -6617,7 +6788,10 @@
        populateModalInspectorSelect('dup-indiv-inspector', row.inspector || '');
        el('dup-indiv-recommendations').value = row.recommendations || '';
        el('dup-indiv-reeval-date').value = row.reevaluationDate || '';
+       if (el('dup-indiv-emp-filter')) el('dup-indiv-emp-filter').value = '';
+       if (el('dup-indiv-emp-select')) el('dup-indiv-emp-select').value = '';
        show('duplicate-indiv-modal');
+       refreshModalStaffPicker('dup', true);
     }
 
     function closeDuplicateIndividualModal() {
