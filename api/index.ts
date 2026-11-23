@@ -53,6 +53,7 @@ const ALLOWED_SETTING_KEYS = [
   "categories",
   "indicators",
   "indicator_targets",
+  "employees",
 ] as const;
 
 function extractGoogleDriveFileIdServer(urlStr: string): string {
@@ -133,6 +134,7 @@ function buildStarterSettings(centerName: string, emptyTemplate = false): Record
       categories: [],
       indicators: [],
       indicator_targets: {},
+      employees: [],
     };
   }
   return {
@@ -144,6 +146,7 @@ function buildStarterSettings(centerName: string, emptyTemplate = false): Record
     categories: [...DEFAULT_CATEGORIES],
     indicators: JSON.parse(JSON.stringify(DEFAULT_INDICATORS)),
     indicator_targets: {},
+    employees: [],
   };
 }
 
@@ -600,6 +603,7 @@ async function getCenterSettingsInternal(centerId: string, centerNameFallback?: 
   if (!Array.isArray(settings.departments)) settings.departments = [];
   if (!Array.isArray(settings.categories)) settings.categories = [];
   if (!Array.isArray(settings.indicators)) settings.indicators = [];
+  if (!Array.isArray(settings.employees)) settings.employees = [];
   if (!settings.indicator_targets || typeof settings.indicator_targets !== "object") {
     settings.indicator_targets = {};
   }
@@ -631,6 +635,51 @@ function normalizeCatalogText(val: any): string {
     .replace(/[–—−‐‑]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function sanitizeEmployeesList(raw: any): Array<{ name: string; job: string }> {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const cleaned: Array<{ name: string; job: string }> = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const name = String(item.name ?? "").replace(/\s+/g, " ").trim();
+    const job = String(item.job ?? "").replace(/\s+/g, " ").trim();
+    if (!name) continue;
+    const key = `${normalizeCatalogText(name).toLowerCase()}___${normalizeCatalogText(job).toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push({ name, job });
+  }
+  return cleaned;
+}
+
+function parseYearMonthSafe(rawDate: any): { year: number; month: number; dateStr: string; monthKey: string } {
+  const s = String(rawDate ?? "").trim();
+  const ymd = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const month = Number(ymd[2]);
+    const day = Number(ymd[3]);
+    const monthStr = String(month).padStart(2, "0");
+    const dayStr = String(day).padStart(2, "0");
+    return { year, month, dateStr: `${year}-${monthStr}-${dayStr}`, monthKey: `${year}-${monthStr}` };
+  }
+  const ym = s.match(/^(\d{4})-(\d{1,2})$/);
+  if (ym) {
+    const year = Number(ym[1]);
+    const month = Number(ym[2]);
+    const monthStr = String(month).padStart(2, "0");
+    return { year, month, dateStr: `${year}-${monthStr}-01`, monthKey: `${year}-${monthStr}` };
+  }
+  const d = new Date(s || Date.now());
+  const safeD = isNaN(d.getTime()) ? new Date() : d;
+  const year = safeD.getUTCFullYear();
+  const month = safeD.getUTCMonth() + 1;
+  const day = safeD.getUTCDate();
+  const monthStr = String(month).padStart(2, "0");
+  const dayStr = String(day).padStart(2, "0");
+  return { year, month, dateStr: `${year}-${monthStr}-${dayStr}`, monthKey: `${year}-${monthStr}` };
 }
 
 interface IndicatorCatalogEntry {
@@ -1005,6 +1054,7 @@ async function createCenterInternal(
       categories: [...(srcSettings.categories || [])],
       indicators: JSON.parse(JSON.stringify(srcSettings.indicators || [])),
       indicator_targets: JSON.parse(JSON.stringify(srcSettings.indicator_targets || {})),
+      employees: JSON.parse(JSON.stringify(srcSettings.employees || [])),
     };
   } else if (mode === "empty") {
     settingsToSeed = buildStarterSettings(name, true);
@@ -1631,12 +1681,16 @@ export default async function handler(req: any, res: any) {
           });
         }
 
+        const sanitizedEmployees =
+          newSettings.employees !== undefined ? sanitizeEmployeesList(newSettings.employees) : undefined;
+
         const stmts: any[] = [];
         for (const k of ALLOWED_SETTING_KEYS) {
           let val: any;
           if (k === "hospital_name") val = newHospitalName;
           else if (k === "logo_right_url") val = sanitizedLogoRight;
           else if (k === "logo_left_url") val = sanitizedLogoLeft;
+          else if (k === "employees") val = sanitizedEmployees;
           else val = newSettings[k];
 
           if (val === undefined) continue;
@@ -1702,6 +1756,7 @@ export default async function handler(req: any, res: any) {
           hospital_name: newHospitalName,
           ...(sanitizedLogoRight !== undefined ? { logo_right_url: sanitizedLogoRight } : {}),
           ...(sanitizedLogoLeft !== undefined ? { logo_left_url: sanitizedLogoLeft } : {}),
+          ...(sanitizedEmployees !== undefined ? { employees: sanitizedEmployees } : {}),
         });
         invalidateKpiDataCaches(center.id);
 
@@ -1709,12 +1764,52 @@ export default async function handler(req: any, res: any) {
         break;
       }
 
+      case "saveEmployeesList": {
+        const center = await requireValidCenter(reqCenterId);
+        const sanitized = sanitizeEmployeesList(args[0]);
+        await db.execute({
+          sql: "INSERT OR REPLACE INTO center_settings (center_id, key, value) VALUES (?, ?, ?)",
+          args: [center.id, "employees", JSON.stringify(sanitized)],
+        });
+        updateCachedSettingsInMemory(center.id, { employees: sanitized });
+        result = { success: true, employees: sanitized };
+        break;
+      }
+
+      case "getEvaluatedEmployeesForMonth": {
+        const center = await requireValidCenter(reqCenterId);
+        const rawDateOrMonth = args[0];
+        const parsed = parseYearMonthSafe(rawDateOrMonth);
+        const likePrefix = `${parsed.monthKey}-%`;
+        const query = await db.execute({
+          sql: `SELECT DISTINCT Target_Name, Target_Job_ID
+                FROM kpis_data
+                WHERE center_id = ?
+                  AND ((Month = ? AND Year = ?) OR Date LIKE ?)
+                  AND Target_Name IS NOT NULL
+                  AND TRIM(Target_Name) != ''
+                LIMIT 5000`,
+          args: [center.id, parsed.month, parsed.year, likePrefix],
+        });
+        const evaluated = query.rows.map((r) => ({
+          name: String(r.Target_Name || "").trim(),
+          job: String(r.Target_Job_ID || "").trim(),
+        }));
+        result = {
+          year: parsed.year,
+          month: parsed.month,
+          monthKey: parsed.monthKey,
+          evaluated,
+        };
+        break;
+      }
+
       case "getSessionStatus": {
         const center = await requireValidCenter(reqCenterId);
         const [_inspector, _dept, _category, indicator, dateStr] = args;
-        const dateObj = new Date(dateStr);
-        const m = dateObj.getMonth() + 1;
-        const y = dateObj.getFullYear();
+        const parsedDate = parseYearMonthSafe(dateStr);
+        const m = parsedDate.month;
+        const y = parsedDate.year;
         const cacheKey = `${center.id}___${y}-${m}___${indicator}`;
         const now = Date.now();
 
@@ -1785,11 +1880,11 @@ export default async function handler(req: any, res: any) {
         const recommendations = String(form.recommendations || "").trim();
         const reevaluationDate = String(form.reevaluationDate || "").trim();
 
-        const dateObj = new Date(form.date);
-        const month = dateObj.getMonth() + 1;
-        const year = dateObj.getFullYear();
+        const parsedFormDate = parseYearMonthSafe(form.date);
+        const month = parsedFormDate.month;
+        const year = parsedFormDate.year;
         const timestampStr = new Date().toISOString();
-        const dateStr = dateObj.toISOString().slice(0, 10);
+        const dateStr = parsedFormDate.dateStr;
         const procMap = await getQuestionToProcedureMap(center.id);
 
         const stmts = (form.answers || []).map((ans: any) => {

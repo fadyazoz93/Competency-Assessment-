@@ -1923,7 +1923,7 @@
          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-5">
             <div>
               <label class="label">التاريخ <span class="text-[#EF4444]">*</span></label>
-              <input type="date" id="date" class="input tabular-nums" required>
+              <input type="date" id="date" class="input tabular-nums" onchange="onEntryDateChange()" required>
             </div>
             <div>
               <label class="label">القائم بالتقييم <span class="text-[#EF4444]">*</span></label>
@@ -1933,13 +1933,37 @@
               <label class="label">المؤشر <span class="text-[#EF4444]">*</span></label>
               <select id="indicator" class="input" onchange="onIndicatorChange()" required></select>
             </div>
+            <div id="entry-staff-picker-wrap" class="hidden md:col-span-2 lg:col-span-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-3.5">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label class="label !mb-0 flex items-center gap-1.5" for="entry-employee-select">
+                  <i class="fas fa-users text-[#0D9488]"></i>
+                  <span>اختيار من قائمة العاملين (المتبقين للتقييم خلال الشهر)</span>
+                </label>
+                <span id="entry-staff-status-badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#0D9488]/10 text-[#0F766E] tabular-nums"></span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div class="relative">
+                  <input type="text" id="entry-employee-filter" class="input pr-8 text-xs" placeholder="بحث سريع في القائمة بالاسم أو الوظيفة..." oninput="renderEntryEmployeeDropdown()">
+                  <i class="fas fa-search absolute right-2.5 top-3 text-slate-400 text-[11px] pointer-events-none"></i>
+                </div>
+                <div class="md:col-span-2">
+                  <select id="entry-employee-select" class="input text-sm font-semibold" onchange="onEntryEmployeeSelected()">
+                    <option value="">-- اختر العامل لتعبئة الاسم والوظيفة تلقائياً --</option>
+                  </select>
+                </div>
+              </div>
+              <p id="entry-staff-all-done-msg" class="hidden mt-2 text-xs font-bold text-[#0F766E] bg-[#DCFCE7]/70 border border-emerald-200 px-3 py-2 rounded-xl flex items-center gap-2">
+                <i class="fas fa-check-circle text-[#10B981]"></i>
+                <span>تم تقييم جميع العاملين المسجلين في القائمة خلال هذا الشهر. يمكنك تغيير الشهر أو إدخال عامل يدوياً أدناه.</span>
+              </p>
+            </div>
             <div>
               <label class="label">الاسم <span class="text-[#EF4444]">*</span></label>
-              <input type="text" id="target_name" class="input" placeholder="أدخل اسم المستهدف بالتقييم" required>
+              <input type="text" id="target_name" class="input" placeholder="أدخل اسم المستهدف بالتقييم" oninput="onManualTargetInput()" required>
             </div>
             <div>
               <label class="label">الوظيفة <span class="text-[#EF4444]">*</span></label>
-              <input type="text" id="target_job_id" class="input" placeholder="أدخل الوظيفة / المسمى الوظيفي" required>
+              <input type="text" id="target_job_id" class="input" placeholder="أدخل الوظيفة / المسمى الوظيفي" oninput="onManualTargetInput()" required>
             </div>
          </div>
 
@@ -2155,6 +2179,96 @@
                 القائمين بالتقييم
              </h3>
              <textarea id="set-insp" class="input h-24" data-extra="h-24" placeholder="كل اسم في سطر"></textarea>
+          </div>
+
+          <!-- Staff / Employees Directory Card -->
+          <div class="bento-card p-5">
+             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-[#E2E8F0]">
+                <div class="flex items-center gap-2.5">
+                   <span class="fx-icon-orb w-9 h-9 rounded-xl bg-gradient-to-br from-[#0284C7]/15 to-[#0D9488]/15 border border-[#0284C7]/25 text-[#0284C7] flex items-center justify-center text-sm flex-shrink-0"><i class="fas fa-users"></i></span>
+                   <div>
+                      <h3 class="font-bold text-slate-900 text-base md:text-lg">قائمة العاملين</h3>
+                      <p class="text-xs text-slate-500 mt-0.5">إدخال أسماء ووظائف العاملين لاختيارهم عند التقييم، ويختفي كل عامل تلقائياً من قائمة التقييم خلال الشهر بمجرد حفظ تقييمه</p>
+                   </div>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                   <span class="text-xs font-bold text-[#0F766E] bg-[#0D9488]/10 px-3 py-1.5 rounded-xl tabular-nums">
+                      إجمالي العاملين: <span id="emp-total-count">0</span>
+                   </span>
+                   <button type="button" id="btn-clear-all-employees" onclick="clearAllEmployees()" class="hidden text-xs bg-[#FEE2E2] hover:bg-red-200 text-[#B91C1C] px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5">
+                      <i class="fas fa-trash-alt"></i> مسح القائمة
+                   </button>
+                </div>
+             </div>
+
+             <!-- 1. Manual Add Employee -->
+             <div class="mb-4 bg-[#F8FAFC] p-4 rounded-2xl border border-[#E2E8F0]">
+                <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                   <i class="fas fa-user-plus text-[#0D9488]"></i> 1. إضافة عامل يدوياً (الاسم / الوظيفة)
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                   <div>
+                      <label class="block text-[11px] font-bold text-slate-600 mb-1">الاسم:</label>
+                      <input type="text" id="new-emp-name" placeholder="مثال: أحمد محمد علي" class="input text-sm w-full" onkeydown="if(event.key==='Enter'){event.preventDefault(); el('new-emp-job').focus();}">
+                   </div>
+                   <div>
+                      <label class="block text-[11px] font-bold text-slate-600 mb-1">الوظيفة:</label>
+                      <input type="text" id="new-emp-job" list="existing-jobs-list" placeholder="مثال: أخصائي تمريض" class="input text-sm w-full" onkeydown="if(event.key==='Enter'){event.preventDefault(); addManualEmployee();}">
+                      <datalist id="existing-jobs-list"></datalist>
+                   </div>
+                   <div>
+                      <button type="button" onclick="addManualEmployee()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white px-5 py-2.5 rounded-xl text-sm font-bold w-full transition flex items-center justify-center gap-1.5">
+                         <i class="fas fa-plus"></i> إضافة وحفظ
+                      </button>
+                   </div>
+                </div>
+             </div>
+
+             <!-- 2. Instant Excel Bulk Import -->
+             <div class="mb-4 bg-emerald-50/40 p-4 rounded-2xl border border-emerald-200/70">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                   <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <i class="fas fa-file-excel text-[#10B981]"></i> 2. استيراد فوري من شيت إكسيل (Bulk Import — نسخ ولصق)
+                   </h4>
+                   <span class="text-[11px] text-[#0284C7] bg-[#0284C7]/10 px-3 py-1 rounded-full font-semibold">
+                      الترتيب في إكسيل: العمود 1 (الاسم) | العمود 2 (الوظيفة)
+                   </span>
+                </div>
+                <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 mb-2 cursor-pointer select-none">
+                   <input type="checkbox" id="emp-auto-import-paste" checked class="w-4 h-4 rounded accent-[#0D9488] cursor-pointer">
+                   <span>استيراد وحفظ فوري تلقائياً بمجرد اللصق (Ctrl+V) من إكسيل</span>
+                </label>
+                <div class="flex flex-col sm:flex-row gap-2 items-stretch">
+                   <textarea id="bulk-employees" onpaste="handleEmployeesInstantPaste(event)" class="input h-20 text-xs font-mono flex-1" data-extra="h-20 text-xs font-mono" placeholder="انسخ عمودي (الاسم والوظيفة) من شيت إكسيل والصقهما هنا مباشرة..."></textarea>
+                   <button type="button" onclick="importEmployeesFromBulk()" class="bg-[#10B981] hover:bg-[#059669] text-white px-5 py-2 rounded-xl font-bold text-sm sm:h-20 whitespace-nowrap transition flex sm:flex-col items-center justify-center gap-1.5">
+                      <i class="fas fa-file-import text-base"></i>
+                      <span>استيراد وحفظ</span>
+                   </button>
+                </div>
+             </div>
+
+             <!-- 3. Search & Employees Table -->
+             <div class="mb-2.5 flex items-center justify-between gap-2 flex-wrap">
+                <div class="relative w-full sm:w-72">
+                   <input type="text" id="emp-settings-search" class="input pr-8 text-xs" placeholder="بحث في قائمة العاملين بالاسم أو الوظيفة..." oninput="renderEmployeesSettingsList()">
+                   <i class="fas fa-search absolute right-2.5 top-3 text-slate-400 text-[11px] pointer-events-none"></i>
+                </div>
+                <span id="emp-filtered-hint" class="text-[11px] text-slate-500 font-semibold"></span>
+             </div>
+
+             <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl max-h-80 overflow-y-auto">
+                <table class="w-full text-xs text-right relative">
+                   <thead class="bg-[#F8FAFC] sticky top-0 z-10 text-slate-700 border-b border-[#E2E8F0]">
+                      <tr>
+                         <th class="p-2.5 w-12 text-center border-l border-[#E2E8F0]">#</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0]">الاسم</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0]">الوظيفة</th>
+                         <th class="p-2.5 w-28 text-center">إجراءات</th>
+                      </tr>
+                   </thead>
+                   <tbody id="emp-set-list"></tbody>
+                </table>
+             </div>
           </div>
 
           <div class="hidden bento-card p-5">
@@ -2668,10 +2782,12 @@
        if (typeof clientReportsSummaryCache !== 'undefined') clientReportsSummaryCache.clear();
 
        // Reset dropdowns and inputs so previous center selections never linger
-       ['inspector', 'indicator', 'indiv-indicator', 'indiv-month', 'indiv-search'].forEach(id => {
+       ['inspector', 'indicator', 'indiv-indicator', 'indiv-month', 'indiv-search', 'entry-employee-select', 'entry-employee-filter', 'emp-settings-search'].forEach(id => {
           const s = el(id);
           if (s) s.value = '';
        });
+       if (typeof evaluatedEmployeesByMonth !== 'undefined') evaluatedEmployeesByMonth.clear();
+       if (typeof editingEmployeeIdx !== 'undefined') editingEmployeeIdx = -1;
        if (el('indiv-tbody')) el('indiv-tbody').innerHTML = '';
        if (typeof selectedIndividualKeys !== 'undefined') selectedIndividualKeys.clear();
        if (typeof allIndividualsData !== 'undefined') allIndividualsData = [];
@@ -2710,7 +2826,9 @@
        
        if (pageId === 'entry') {
           initEntry();
-          refreshSettingsQuietly();
+          refreshSettingsQuietly(() => {
+             refreshEvaluatedEmployeesForEntry(true);
+          });
        }
        if (pageId === 'individuals') {
           loadIndividuals();
@@ -2808,6 +2926,10 @@
        refreshSettingsQuietly(() => {
           if (pageId === 'individuals') {
              loadIndividuals(true, () => {
+                isQuietSyncRunning = false;
+             });
+          } else if (pageId === 'entry') {
+             refreshEvaluatedEmployeesForEntry(true, () => {
                 isQuietSyncRunning = false;
              });
           } else {
@@ -3223,6 +3345,7 @@
 
           fillDropdowns();
           renderSettingsPage();
+          if (typeof refreshEvaluatedEmployeesForEntry === 'function') refreshEvaluatedEmployeesForEntry(false);
           loading(false);
        }).withFailureHandler(err => {
           showToast('خطأ في الاتصال: ' + err, 'error');
@@ -3244,6 +3367,9 @@
        // Unique Indicators
        const inds = [...new Set((config.indicators||[]).map(i => i.indicator).filter(Boolean))];
        fill('indicator', inds, false);
+       if (typeof renderEntryEmployeeDropdown === 'function') {
+          renderEntryEmployeeDropdown();
+       }
     }
     
     // Custom Plugin to Draw Percentages
@@ -3423,11 +3549,178 @@
        });
     }
 
-    // --- Entry Logic ---
-    function initEntry() {
-       el('date').value = new Date().toISOString().split('T')[0];
+    // --- Entry Logic & Monthly Staff Tracking ---
+    const evaluatedEmployeesByMonth = new Map();
+    let activeEntryEvaluatedReqSeq = 0;
+
+    function normalizeEmployeeMatchText(val) {
+       return String(val ?? '')
+          .replace(/[\u200B-\u200F\uFEFF]/g, '')
+          .replace(/[أإآ]/g, 'ا')
+          .replace(/ة/g, 'ه')
+          .replace(/ى/g, 'ي')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+    }
+
+    function getSelectedEntryMonthKey() {
+       const dateVal = (el('date') && el('date').value) ? String(el('date').value).trim() : '';
+       if (/^\d{4}-\d{2}/.test(dateVal)) return dateVal.slice(0, 7);
+       const now = new Date();
+       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFrequencyMap) {
+       const normName = normalizeEmployeeMatchText(emp.name);
+       const normJob = normalizeEmployeeMatchText(emp.job);
+       if (!normName) return false;
+       const hasDuplicateName = (nameFrequencyMap.get(normName) || 0) > 1;
+       return (evaluatedList || []).some(ev => {
+          const evName = normalizeEmployeeMatchText(ev.name);
+          if (evName !== normName) return false;
+          if (!hasDuplicateName) return true;
+          const evJob = normalizeEmployeeMatchText(ev.job);
+          if (!evJob || !normJob) return true;
+          return evJob === normJob;
+       });
+    }
+
+    function renderEntryEmployeeDropdown() {
+       const wrap = el('entry-staff-picker-wrap');
+       const select = el('entry-employee-select');
+       const badge = el('entry-staff-status-badge');
+       const allDoneMsg = el('entry-staff-all-done-msg');
+       if (!wrap || !select) return;
+
+       const employees = Array.isArray(config.employees) ? config.employees : [];
+       if (employees.length === 0) {
+          wrap.classList.add('hidden');
+          return;
+       }
+       wrap.classList.remove('hidden');
+
+       const monthKey = getSelectedEntryMonthKey();
+       const evaluatedList = evaluatedEmployeesByMonth.get(monthKey) || [];
+       const nameFreq = new Map();
+       employees.forEach(emp => {
+          const k = normalizeEmployeeMatchText(emp.name);
+          if (k) nameFreq.set(k, (nameFreq.get(k) || 0) + 1);
+       });
+
+       const available = [];
+       employees.forEach((emp, idx) => {
+          if (!isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFreq)) {
+             available.push({ emp, idx });
+          }
+       });
+
+       const searchQuery = normalizeEmployeeMatchText(el('entry-employee-filter')?.value || '');
+       const filteredAvailable = searchQuery
+          ? available.filter(({ emp }) =>
+               normalizeEmployeeMatchText(emp.name).includes(searchQuery) ||
+               normalizeEmployeeMatchText(emp.job).includes(searchQuery)
+            )
+          : available;
+
+       const prevVal = select.value;
+       const placeholder = available.length === 0
+          ? '-- لا يوجد عاملين متبقين لهذا الشهر --'
+          : (filteredAvailable.length === 0
+              ? '-- لا توجد نتائج مطابقة للبحث --'
+              : '-- اختر العامل لتعبئة الاسم والوظيفة تلقائياً --');
+
+       select.innerHTML = `<option value="">${placeholder}</option>` + filteredAvailable.map(({ emp, idx }) => {
+          const label = emp.job ? `${emp.name} — ${emp.job}` : emp.name;
+          return `<option value="${idx}">${escapeHtml(label)}</option>`;
+       }).join('');
+
+       if (prevVal !== '' && filteredAvailable.some(x => String(x.idx) === String(prevVal))) {
+          select.value = prevVal;
+       } else {
+          select.value = '';
+       }
+
+       if (badge) {
+          badge.innerText = `المتبقي لشهر ${monthKey}: ${available.length} من ${employees.length}`;
+       }
+       if (allDoneMsg) {
+          if (available.length === 0) allDoneMsg.classList.remove('hidden');
+          else allDoneMsg.classList.add('hidden');
+       }
+    }
+
+    function refreshEvaluatedEmployeesForEntry(force = false, onDone) {
+       if (!activeCenter) {
+          renderEntryEmployeeDropdown();
+          if (typeof onDone === 'function') onDone();
+          return;
+       }
+       const monthKey = getSelectedEntryMonthKey();
+       if (!force && evaluatedEmployeesByMonth.has(monthKey)) {
+          renderEntryEmployeeDropdown();
+          if (typeof onDone === 'function') onDone();
+          return;
+       }
+       const reqSeq = ++activeEntryEvaluatedReqSeq;
+       google.script.run
+          .withSuccessHandler(res => {
+             if (reqSeq !== activeEntryEvaluatedReqSeq) {
+                if (typeof onDone === 'function') onDone();
+                return;
+             }
+             const list = (res && Array.isArray(res.evaluated)) ? res.evaluated : [];
+             const resolvedKey = (res && res.monthKey) ? res.monthKey : monthKey;
+             evaluatedEmployeesByMonth.set(resolvedKey, list);
+             renderEntryEmployeeDropdown();
+             if (typeof onDone === 'function') onDone();
+          })
+          .withFailureHandler(() => {
+             renderEntryEmployeeDropdown();
+             if (typeof onDone === 'function') onDone();
+          })
+          .getEvaluatedEmployeesForMonth(monthKey);
+    }
+
+    function onEntryDateChange() {
+       if (el('entry-employee-select')) el('entry-employee-select').value = '';
+       refreshEvaluatedEmployeesForEntry(true);
+       if (el('indicator') && el('indicator').value) {
+          checkSession();
+       }
+    }
+
+    function onEntryEmployeeSelected() {
+       const select = el('entry-employee-select');
+       if (!select || select.value === '') return;
+       const idx = Number(select.value);
+       const emp = (config.employees || [])[idx];
+       if (!emp) return;
+       if (el('target_name')) el('target_name').value = emp.name || '';
+       if (el('target_job_id')) el('target_job_id').value = emp.job || '';
+    }
+
+    function onManualTargetInput() {
+       const select = el('entry-employee-select');
+       if (select && select.value !== '') {
+          const emp = (config.employees || [])[Number(select.value)];
+          const curName = (el('target_name')?.value || '').trim();
+          const curJob = (el('target_job_id')?.value || '').trim();
+          if (!emp || curName !== (emp.name || '') || curJob !== (emp.job || '')) {
+             select.value = '';
+          }
+       }
+    }
+
+    function initEntry(preserveDate = false) {
+       if (!preserveDate || !el('date').value) {
+          const now = new Date();
+          el('date').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+       }
        el('target_name').value = '';
        el('target_job_id').value = '';
+       if (el('entry-employee-select')) el('entry-employee-select').value = '';
+       if (el('entry-employee-filter')) el('entry-employee-filter').value = '';
        if (el('entry-recommendations')) el('entry-recommendations').value = '';
        if (el('entry-reevaluation-date')) el('entry-reevaluation-date').value = '';
        hide('questions-area');
@@ -3436,6 +3729,7 @@
        if(el('session-count-text')) el('session-count-text').innerText = '0';
        const btnMult = el('btn-multiply-from-entry');
        if (btnMult) btnMult.classList.add('hidden');
+       renderEntryEmployeeDropdown();
     }
 
     // ذاكرة مؤقتة للجلسات ومؤقت تقليل الفحص المتكرر (Debounce & In-Memory Cache)
@@ -3809,8 +4103,13 @@
              item.totalRecords = (item.totalRecords || 0) + data.answers.length;
           }
 
-          initEntry();
+          const existingEval = evaluatedEmployeesByMonth.get(savedMonth) || [];
+          existingEval.push({ name: targetName, job: targetJobId });
+          evaluatedEmployeesByMonth.set(savedMonth, existingEval);
+
+          initEntry(true);
           el('indicator').value = '';
+          refreshEvaluatedEmployeesForEntry(true);
 
           showToast(`تم حفظ التقييم للجلسة ${sessNum ? '(' + sessNum + ') ' : ''}بنجاح!`, 'success');
           const promptMult = confirm(`تم حفظ التقييم للجلسة ${sessNum ? '(' + sessNum + ') ' : ''}بنجاح!\n\nهل ترغب في مضاعفة عدد الجلسات المحفوظة لهذا المؤشر (${savedInd}) في نفس الشهر (${savedMonth}) الآن؟`);
@@ -6280,6 +6579,7 @@
        google.script.run
           .withSuccessHandler(() => {
              loading(false);
+             evaluatedEmployeesByMonth.clear();
              closeEditIndividualModal();
              showToast('تم حفظ تعديلات التقييم بنجاح.', 'success');
              loadIndividuals();
@@ -6347,6 +6647,7 @@
        google.script.run
           .withSuccessHandler(() => {
              loading(false);
+             evaluatedEmployeesByMonth.clear();
              closeDuplicateIndividualModal();
              showToast('تم نسخ التقييم بنجاح.', 'success');
              loadIndividuals();
@@ -6397,6 +6698,7 @@
        google.script.run
           .withSuccessHandler(() => {
              loading(false);
+             evaluatedEmployeesByMonth.clear();
              selectedIndividualKeys.delete(target.sessionKey);
              closeDeleteIndividualModal();
              showToast('تم حذف التقييم بنجاح.', 'success');
@@ -6952,8 +7254,295 @@
        el('set-insp').value = (config.inspectors||[]).join('\n');
        updateCenterNameBindings(config.hospital_name || (activeCenter ? activeCenter.name : ''));
 
+       renderEmployeesSettingsList();
        renderKpiList();
        renderTargetsList();
+    }
+
+    // --- Employees Directory Management & Instant Excel Bulk Import ---
+    let editingEmployeeIdx = -1;
+
+    function updateJobsDatalist() {
+       const dl = el('existing-jobs-list');
+       if (!dl) return;
+       const jobs = [...new Set((config.employees || []).map(e => String(e?.job || '').trim()).filter(Boolean))];
+       dl.innerHTML = jobs.map(j => `<option value="${escapeHtml(j)}">`).join('');
+    }
+
+    function renderEmployeesSettingsList() {
+       const tbody = el('emp-set-list');
+       const totalEl = el('emp-total-count');
+       const clearBtn = el('btn-clear-all-employees');
+       const hintEl = el('emp-filtered-hint');
+       if (!tbody) return;
+
+       const list = Array.isArray(config.employees) ? config.employees : [];
+       if (totalEl) totalEl.innerText = String(list.length);
+       if (clearBtn) {
+          if (list.length > 0) clearBtn.classList.remove('hidden');
+          else clearBtn.classList.add('hidden');
+       }
+       updateJobsDatalist();
+
+       const q = normalizeEmployeeMatchText(el('emp-settings-search')?.value || '');
+       const indexed = list.map((emp, idx) => ({
+          idx,
+          name: String(emp?.name || '').trim(),
+          job: String(emp?.job || '').trim()
+       }));
+       const filtered = q
+          ? indexed.filter(it =>
+               normalizeEmployeeMatchText(it.name).includes(q) ||
+               normalizeEmployeeMatchText(it.job).includes(q)
+            )
+          : indexed;
+
+       if (hintEl) {
+          hintEl.innerText = q ? `عرض ${filtered.length} من أصل ${list.length}` : '';
+       }
+
+       if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400 font-medium">لا يوجد عاملون مسجلون حالياً. يمكنك الإضافة يدوياً أو نسخ ولصق جدول من إكسيل مباشرة.</td></tr>`;
+          return;
+       }
+       if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-5 text-center text-gray-400 font-medium">لا توجد نتائج مطابقة للبحث</td></tr>`;
+          return;
+       }
+
+       tbody.innerHTML = filtered.map((item, displayIdx) => {
+          if (editingEmployeeIdx === item.idx) {
+             return `
+                <tr class="border-b border-[#E2E8F0] bg-sky-50/60">
+                   <td class="p-2 text-center text-slate-500 tabular-nums border-l border-[#E2E8F0]">${displayIdx + 1}</td>
+                   <td class="p-2 border-l border-[#E2E8F0]">
+                      <input type="text" id="edit-emp-name-${item.idx}" value="${escapeHtml(item.name)}" class="input !py-1.5 text-xs w-full">
+                   </td>
+                   <td class="p-2 border-l border-[#E2E8F0]">
+                      <input type="text" id="edit-emp-job-${item.idx}" value="${escapeHtml(item.job)}" list="existing-jobs-list" class="input !py-1.5 text-xs w-full" onkeydown="if(event.key==='Enter'){event.preventDefault(); saveInlineEmployeeEdit(${item.idx});}">
+                   </td>
+                   <td class="p-2 text-center whitespace-nowrap">
+                      <button type="button" onclick="saveInlineEmployeeEdit(${item.idx})" class="text-[11px] bg-[#0D9488] hover:bg-[#0F766E] text-white px-2.5 py-1 rounded-lg font-bold ml-1">حفظ</button>
+                      <button type="button" onclick="cancelInlineEmployeeEdit()" class="text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded-lg font-bold">إلغاء</button>
+                   </td>
+                </tr>
+             `;
+          }
+          return `
+             <tr class="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition">
+                <td class="p-2.5 text-center text-slate-500 tabular-nums border-l border-[#E2E8F0]">${displayIdx + 1}</td>
+                <td class="p-2.5 font-bold text-slate-900 border-l border-[#E2E8F0]">${escapeHtml(item.name)}</td>
+                <td class="p-2.5 text-slate-600 border-l border-[#E2E8F0]">${item.job ? escapeHtml(item.job) : '<span class="text-amber-600 font-semibold">بدون وظيفة</span>'}</td>
+                <td class="p-2.5 text-center whitespace-nowrap">
+                   <button type="button" onclick="startInlineEmployeeEdit(${item.idx})" class="text-[#0284C7] hover:bg-sky-100 p-1.5 rounded-lg transition ml-1" title="تعديل"><i class="fas fa-pen text-xs"></i></button>
+                   <button type="button" onclick="deleteEmployeeAt(${item.idx})" class="text-[#EF4444] hover:bg-red-100 p-1.5 rounded-lg transition" title="حذف"><i class="fas fa-trash-alt text-xs"></i></button>
+                </td>
+             </tr>
+          `;
+       }).join('');
+    }
+
+    function saveEmployeesListToServer(nextEmployees, successMessage) {
+       if (!activeCenter) return;
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             config.employees = (res && Array.isArray(res.employees)) ? res.employees : nextEmployees;
+             editingEmployeeIdx = -1;
+             renderEmployeesSettingsList();
+             renderEntryEmployeeDropdown();
+             if (successMessage) showToast(successMessage, 'success');
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             showToast('تعذر حفظ قائمة العاملين: ' + err, 'error');
+          })
+          .saveEmployeesList(nextEmployees);
+    }
+
+    function addManualEmployee() {
+       const nameEl = el('new-emp-name');
+       const jobEl = el('new-emp-job');
+       const name = (nameEl?.value || '').replace(/\s+/g, ' ').trim();
+       const job = (jobEl?.value || '').replace(/\s+/g, ' ').trim();
+       if (!name) {
+          showToast('يرجى إدخال اسم العامل.', 'warning');
+          if (nameEl) nameEl.focus();
+          return;
+       }
+       if (!job) {
+          showToast('يرجى إدخال الوظيفة.', 'warning');
+          if (jobEl) jobEl.focus();
+          return;
+       }
+
+       const current = Array.isArray(config.employees) ? [...config.employees] : [];
+       const targetKey = `${normalizeEmployeeMatchText(name)}___${normalizeEmployeeMatchText(job)}`;
+       const exists = current.some(e => `${normalizeEmployeeMatchText(e.name)}___${normalizeEmployeeMatchText(e.job)}` === targetKey);
+       if (exists) {
+          showToast('هذا العامل مسجل بالفعل بنفس الاسم والوظيفة.', 'warning');
+          return;
+       }
+
+       current.push({ name, job });
+       if (nameEl) nameEl.value = '';
+       if (jobEl) jobEl.value = '';
+       if (nameEl) nameEl.focus();
+       saveEmployeesListToServer(current, `تمت إضافة "${name}" وحفظ القائمة بنجاح.`);
+    }
+
+    function startInlineEmployeeEdit(idx) {
+       editingEmployeeIdx = idx;
+       renderEmployeesSettingsList();
+       const inp = el(`edit-emp-name-${idx}`);
+       if (inp) inp.focus();
+    }
+
+    function cancelInlineEmployeeEdit() {
+       editingEmployeeIdx = -1;
+       renderEmployeesSettingsList();
+    }
+
+    function saveInlineEmployeeEdit(idx) {
+       const name = (el(`edit-emp-name-${idx}`)?.value || '').replace(/\s+/g, ' ').trim();
+       const job = (el(`edit-emp-job-${idx}`)?.value || '').replace(/\s+/g, ' ').trim();
+       if (!name) {
+          showToast('يرجى إدخال الاسم.', 'warning');
+          return;
+       }
+       const current = Array.isArray(config.employees) ? [...config.employees] : [];
+       if (!current[idx]) return;
+       current[idx] = { name, job };
+       saveEmployeesListToServer(current, 'تم تعديل بيانات العامل وحفظها بنجاح.');
+    }
+
+    function deleteEmployeeAt(idx) {
+       const current = Array.isArray(config.employees) ? [...config.employees] : [];
+       const target = current[idx];
+       if (!target) return;
+       openKpiConfirmModal({
+          title: 'حذف عامل من القائمة',
+          body: `هل تريد حذف "${target.name}" (${target.job || 'بدون وظيفة'}) من قائمة العاملين؟\nلن تتأثر التقييمات المحفوظة سابقاً.`,
+          okLabel: 'حذف',
+          onConfirm: () => {
+             const updated = (config.employees || []).filter((_, i) => i !== idx);
+             saveEmployeesListToServer(updated, 'تم حذف العامل من القائمة.');
+          }
+       });
+    }
+
+    function clearAllEmployees() {
+       const count = (config.employees || []).length;
+       if (count === 0) return;
+       openKpiConfirmModal({
+          title: 'مسح قائمة العاملين بالكامل',
+          body: `هل أنت متأكد من مسح جميع العاملين (${count}) من قائمة الإعدادات؟\nلن يتم حذف أي تقييمات مسجلة سابقاً.`,
+          okLabel: 'مسح الكل',
+          onConfirm: () => {
+             saveEmployeesListToServer([], 'تم مسح قائمة العاملين بنجاح.');
+          }
+       });
+    }
+
+    function parseBulkEmployeesText(rawText) {
+       const text = String(rawText || '').trim();
+       if (!text) return [];
+       let rawRows = [];
+       if (text.includes('\t') || text.includes('|')) {
+          rawRows = parseSpreadsheetRows(text);
+       } else {
+          rawRows = text.split(/\r?\n/).map(line => {
+             const cleanLine = line.trim();
+             if (!cleanLine) return [];
+             if (cleanLine.includes(';')) return cleanLine.split(';');
+             if (cleanLine.includes(',')) return cleanLine.split(',');
+             if (cleanLine.includes(' - ')) return cleanLine.split(' - ');
+             return [cleanLine];
+          });
+       }
+
+       const headerNameWords = new Set(['الاسم', 'اسم', 'اسم الموظف', 'اسم العامل', 'الاسم بالكامل', 'الاسم الثلاثي', 'الاسم الرباعي', 'name', 'employee', 'employee name', 'staff', 'full name']);
+       const headerJobWords = new Set(['الوظيفة', 'الوظيفه', 'وظيفة', 'وظيفه', 'المسمى الوظيفي', 'المسمى', 'التخصص', 'الفئة', 'الفئه', 'job', 'job title', 'title', 'role', 'position']);
+
+       const parsed = [];
+       rawRows.forEach((partsRaw, rowIdx) => {
+          const parts = (partsRaw || []).map(cleanImportedCell).filter((v, i) => i < 3);
+          if (parts.length === 0 || parts.every(p => !p)) return;
+          let name = parts[0] || '';
+          let job = parts[1] || '';
+
+          // Handle 3-column paste with leading serial number (# | Name | Job)
+          if (parts.length >= 3 && /^\d+$/.test(parts[0]) && parts[1]) {
+             name = parts[1];
+             job = parts[2] || '';
+          }
+
+          if (!name) return;
+          if (rowIdx === 0) {
+             const nNorm = normalizeEmployeeMatchText(name);
+             const jNorm = normalizeEmployeeMatchText(job);
+             if (headerNameWords.has(nNorm) && (!jNorm || headerJobWords.has(jNorm))) {
+                return;
+             }
+          }
+          parsed.push({ name, job });
+       });
+       return parsed;
+    }
+
+    function importEmployeesFromText(rawText) {
+       const parsed = parseBulkEmployeesText(rawText);
+       if (parsed.length === 0) {
+          showToast('لم يتم العثور على صفوف صالحة تحتوي على أسماء العاملين. تأكد من نسخ عمودي (الاسم والوظيفة) من إكسيل.', 'warning');
+          return;
+       }
+
+       const current = Array.isArray(config.employees) ? [...config.employees] : [];
+       const seen = new Set(
+          current.map(e => `${normalizeEmployeeMatchText(e.name)}___${normalizeEmployeeMatchText(e.job)}`)
+       );
+
+       let addedCount = 0;
+       let dupCount = 0;
+       parsed.forEach(item => {
+          const key = `${normalizeEmployeeMatchText(item.name)}___${normalizeEmployeeMatchText(item.job)}`;
+          if (seen.has(key)) {
+             dupCount++;
+             return;
+          }
+          seen.add(key);
+          current.push(item);
+          addedCount++;
+       });
+
+       if (el('bulk-employees')) el('bulk-employees').value = '';
+
+       if (addedCount === 0) {
+          showToast(`جميع العاملين الملصقين (${dupCount}) مسجلون بالفعل في القائمة.`, 'warning');
+          return;
+       }
+
+       const dupMsg = dupCount > 0 ? ` (تم تخطي ${dupCount} مكرر)` : '';
+       saveEmployeesListToServer(current, `تم استيراد وحفظ ${addedCount} عامل بنجاح${dupMsg}.`);
+    }
+
+    function handleEmployeesInstantPaste(event) {
+       const autoCheck = el('emp-auto-import-paste');
+       if (!autoCheck || !autoCheck.checked) return;
+       const pasted = event.clipboardData ? event.clipboardData.getData('text') : '';
+       if (!pasted || !pasted.trim()) return;
+       event.preventDefault();
+       importEmployeesFromText(pasted);
+    }
+
+    function importEmployeesFromBulk() {
+       const txt = el('bulk-employees')?.value || '';
+       if (!txt.trim()) {
+          showToast('يرجى لصق قائمة العاملين من إكسيل أولاً.', 'warning');
+          return;
+       }
+       importEmployeesFromText(txt);
     }
     
     function renderTargetsList() {
@@ -7781,7 +8370,8 @@
           departments: [],
           categories: [],
           indicators: config.indicators || [],
-          indicator_targets: indicator_targets
+          indicator_targets: indicator_targets,
+          employees: config.employees || []
        };
        
        loading(true);
@@ -7820,7 +8410,7 @@
 
      if (typeof google === 'undefined') {
        const READ_ONLY_ACTIONS = new Set([
-         'listCenters', 'getAppSettings', 'getSessionStatus', 'fetchIndividualAssessments',
+         'listCenters', 'getAppSettings', 'getSessionStatus', 'getEvaluatedEmployeesForMonth', 'fetchIndividualAssessments',
          'fetchIndividualAssessmentDetails', 'fetchMultipleIndividualAssessments',
          'fetchKpiReport', 'fetchReportsSummary', 'fetchSelectedReports',
          'fetchAllResultsForExcel', 'fetchIndicatorRecordsForEdit', 'getDashboardData',
