@@ -1876,18 +1876,19 @@ export default async function handler(req: any, res: any) {
         const parsed = parseYearMonthSafe(rawDateOrMonth);
         const likePrefix = `${parsed.monthKey}-%`;
         const query = await db.execute({
-          sql: `SELECT DISTINCT Target_Name, Target_Job_ID
+          sql: `SELECT DISTINCT Target_Name, Target_Job_ID, Indicator
                 FROM kpis_data
                 WHERE center_id = ?
                   AND ((Month = ? AND Year = ?) OR Date LIKE ?)
                   AND Target_Name IS NOT NULL
                   AND TRIM(Target_Name) != ''
-                LIMIT 5000`,
+                LIMIT 10000`,
           args: [center.id, parsed.month, parsed.year, likePrefix],
         });
         const evaluated = query.rows.map((r) => ({
           name: String(r.Target_Name || "").trim(),
           job: String(r.Target_Job_ID || "").trim(),
+          indicator: String(r.Indicator || "").trim(),
         }));
         result = {
           year: parsed.year,

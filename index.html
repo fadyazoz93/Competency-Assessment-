@@ -1954,7 +1954,7 @@
               </div>
               <p id="entry-staff-all-done-msg" class="hidden mt-2 text-xs font-bold text-[#0F766E] bg-[#DCFCE7]/70 border border-emerald-200 px-3 py-2 rounded-xl flex items-center gap-2">
                 <i class="fas fa-check-circle text-[#10B981]"></i>
-                <span>تم تقييم جميع العاملين المسجلين في القائمة خلال هذا الشهر. يمكنك تغيير الشهر أو إدخال عامل يدوياً أدناه.</span>
+                <span>تم تقييم جميع العاملين المسجلين لهذا المؤشر خلال هذا الشهر. يمكنك اختيار مؤشر آخر أو تغيير الشهر أو إدخال عامل يدوياً أدناه.</span>
               </p>
             </div>
             <div>
@@ -3619,12 +3619,15 @@
        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     }
 
-    function isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFrequencyMap) {
+    function isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFrequencyMap, indicatorFilter = '') {
        const normName = normalizeEmployeeMatchText(emp.name);
        const normJob = normalizeEmployeeMatchText(emp.job);
-       if (!normName) return false;
+       const normInd = normalizeEmployeeMatchText(indicatorFilter);
+       if (!normName || !normInd) return false;
        const hasDuplicateName = (nameFrequencyMap.get(normName) || 0) > 1;
        return (evaluatedList || []).some(ev => {
+          const evInd = normalizeEmployeeMatchText(ev.indicator);
+          if (evInd !== normInd) return false;
           const evName = normalizeEmployeeMatchText(ev.name);
           if (evName !== normName) return false;
           if (!hasDuplicateName) return true;
@@ -3649,6 +3652,7 @@
        wrap.classList.remove('hidden');
 
        const monthKey = getSelectedEntryMonthKey();
+       const selectedIndicator = (el('indicator')?.value || '').trim();
        const evaluatedList = evaluatedEmployeesByMonth.get(monthKey) || [];
        const nameFreq = new Map();
        employees.forEach(emp => {
@@ -3658,7 +3662,7 @@
 
        const available = [];
        employees.forEach((emp, idx) => {
-          if (!isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFreq)) {
+          if (!isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFreq, selectedIndicator)) {
              available.push({ emp, idx });
           }
        });
@@ -3672,8 +3676,8 @@
           : available;
 
        const prevVal = select.value;
-       const placeholder = available.length === 0
-          ? '-- لا يوجد عاملين متبقين لهذا الشهر --'
+       const placeholder = (selectedIndicator && available.length === 0)
+          ? '-- لا يوجد عاملين متبقين لهذا المؤشر خلال الشهر --'
           : (filteredAvailable.length === 0
               ? '-- لا توجد نتائج مطابقة للبحث --'
               : '-- اختر العامل لتعبئة الاسم والوظيفة تلقائياً --');
@@ -3690,10 +3694,12 @@
        }
 
        if (badge) {
-          badge.innerText = `المتبقي لشهر ${monthKey}: ${available.length} من ${employees.length}`;
+          badge.innerText = selectedIndicator
+             ? `المتبقي لهذا المؤشر في ${monthKey}: ${available.length} من ${employees.length}`
+             : `قائمة العاملين (${employees.length}) — اختر المؤشر لعرض المتبقين`;
        }
        if (allDoneMsg) {
-          if (available.length === 0) allDoneMsg.classList.remove('hidden');
+          if (selectedIndicator && available.length === 0) allDoneMsg.classList.remove('hidden');
           else allDoneMsg.classList.add('hidden');
        }
     }
@@ -3850,6 +3856,11 @@
     }
 
     function onIndicatorChange() {
+       if (!el('indicator') || !el('indicator').value) {
+          hide('questions-area');
+       }
+       renderEntryEmployeeDropdown();
+       refreshEvaluatedEmployeesForEntry(false);
        checkSession();
     }
 
@@ -4152,12 +4163,14 @@
           }
 
           const existingEval = evaluatedEmployeesByMonth.get(savedMonth) || [];
-          existingEval.push({ name: targetName, job: targetJobId });
+          existingEval.push({ name: targetName, job: targetJobId, indicator: savedInd });
           evaluatedEmployeesByMonth.set(savedMonth, existingEval);
 
           initEntry(true);
-          el('indicator').value = '';
+          if (el('indicator')) el('indicator').value = savedInd;
+          renderEntryEmployeeDropdown();
           refreshEvaluatedEmployeesForEntry(true);
+          checkSession(true);
 
           showToast(`تم حفظ التقييم للجلسة ${sessNum ? '(' + sessNum + ') ' : ''}بنجاح!`, 'success');
           const promptMult = confirm(`تم حفظ التقييم للجلسة ${sessNum ? '(' + sessNum + ') ' : ''}بنجاح!\n\nهل ترغب في مضاعفة عدد الجلسات المحفوظة لهذا المؤشر (${savedInd}) في نفس الشهر (${savedMonth}) الآن؟`);
@@ -6678,6 +6691,9 @@
        wrap.classList.remove('hidden');
 
        const monthKey = getModalStaffMonthKey(prefix);
+       const modalIndicator = prefix === 'edit'
+          ? (currentEditingIndividual?.indicator || '')
+          : (currentDuplicatingIndividual?.indicator || '');
        const evaluatedList = evaluatedEmployeesByMonth.get(monthKey) || [];
        const nameFreq = new Map();
        employees.forEach(emp => {
@@ -6687,7 +6703,7 @@
 
        const available = [];
        employees.forEach((emp, idx) => {
-          if (!isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFreq)) {
+          if (!isEmployeeEvaluatedInMonth(emp, evaluatedList, nameFreq, modalIndicator)) {
              available.push({ emp, idx });
           }
        });
@@ -6701,8 +6717,8 @@
           : available;
 
        const prevVal = select.value;
-       const placeholder = available.length === 0
-          ? '-- لا يوجد عاملين متبقين لهذا الشهر --'
+       const placeholder = (modalIndicator && available.length === 0)
+          ? '-- لا يوجد عاملين متبقين لهذا المؤشر خلال الشهر --'
           : (filteredAvailable.length === 0
               ? '-- لا توجد نتائج مطابقة للبحث --'
               : '-- اختر فرداً من قائمة العاملين لتعبئة الاسم والوظيفة --');
@@ -6719,10 +6735,12 @@
        }
 
        if (badge) {
-          badge.innerText = `المتبقي لشهر ${monthKey}: ${available.length} من ${employees.length}`;
+          badge.innerText = modalIndicator
+             ? `المتبقي لهذا المؤشر في ${monthKey}: ${available.length} من ${employees.length}`
+             : `المتبقي لشهر ${monthKey}: ${available.length} من ${employees.length}`;
        }
        if (allDoneMsg) {
-          if (available.length === 0) allDoneMsg.classList.remove('hidden');
+          if (modalIndicator && available.length === 0) allDoneMsg.classList.remove('hidden');
           else allDoneMsg.classList.add('hidden');
        }
     }
